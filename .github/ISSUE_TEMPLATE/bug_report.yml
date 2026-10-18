@@ -1,0 +1,56 @@
+name: Bug report
+description: A value that reads wrong, an entity that is missing, or a set-up that fails
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        The diagnostics file is what makes a report answerable. It says how the
+        battery is reached, how many requests failed and the last error, and
+        holds the last reading with the raw register words behind it. The
+        address, the serial numbers, the MAC address and the cloud credentials
+        are taken out before you get the file. Read it through before you
+        attach it all the same.
+  - type: dropdown
+    id: model
+    attributes:
+      label: Battery
+      options:
+        - Force H1
+        - Force H2
+        - Force H3
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: transport
+    attributes:
+      label: How it is reached
+      options:
+        - Wi-Fi or LAN module (Solarman, port 8899)
+        - Modbus TCP
+        - RS485 converter
+        - Solarman cloud
+        - The set-up does not get that far
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Integration version
+      placeholder: e.g. 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected instead
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: >-
+        Settings, Devices and services, Pylontech Easyconf, the three dots next
+        to the battery, Download diagnostics. Drag the file into this box.

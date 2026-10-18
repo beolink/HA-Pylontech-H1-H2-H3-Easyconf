@@ -1,0 +1,47 @@
+# HA-Nibe-Easyconf's and HA-CTC-Local-Easyconf's rules, so a contributor meets
+# one style across these integrations. CI pins the ruff version in
+# .github/workflows/validate.yml: a new ruff release adds rules, and CI should
+# go red over a change in this repository, not over one in ruff.
+#
+# Python 3.12 is the oldest interpreter the rules assume, so the upgrade
+# rules suggest nothing newer.
+target-version = "py312"
+line-length = 100
+# The tests import their helpers (conftest, fake_logger, fixtures) as
+# top-level modules, as pytest puts tests/ on the path; listed here, the
+# import sorter files them in a section of their own (see [lint.isort]).
+src = [".", "tests"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    # Home Assistant entity classes set attributes rather than properties.
+    "RUF012",
+]
+
+[lint.isort]
+force-sort-within-sections = true
+combine-as-imports = true
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "test-helpers",
+    "first-party",
+    "local-folder",
+]
+
+[lint.isort.sections]
+"test-helpers" = ["conftest", "fake_logger", "fake_cloud", "fixtures"]
+
+[lint.per-file-ignores]
+# stats.py is a shared file, copied verbatim between these integrations so the
+# reporting behaviour stays identical across all of them and a fix in one is a
+# straight copy into the others. Linting it here would fork it for cosmetic
+# reasons, so its own style is left alone.
+"custom_components/*/stats.py" = ["I001", "UP035", "SIM105", "RUF100"]
+# The texts are sentences, Swedish and English: broken to fit a hundred
+# columns they get harder to read and to search for.
+"scripts/build_strings.py" = ["E501"]
+# The real dump is kept in the shape it was published in, row by row.
+"tests/fixtures/*.py" = ["RUF005"]

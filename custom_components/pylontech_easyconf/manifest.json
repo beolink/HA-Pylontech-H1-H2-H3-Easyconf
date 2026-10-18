@@ -1,0 +1,25 @@
+{
+  "domain": "pylontech_easyconf",
+  "name": "Pylontech Easyconf",
+  "codeowners": [
+    "@beolink"
+  ],
+  "config_flow": true,
+  "dependencies": [
+    "network"
+  ],
+  "dhcp": [
+    {
+      "macaddress": "E8FDF8*"
+    },
+    {
+      "registered_devices": true
+    }
+  ],
+  "documentation": "https://github.com/beolink/HA-Pylontech-H1-H2-H3-Easyconf",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/beolink/HA-Pylontech-H1-H2-H3-Easyconf/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

@@ -1,0 +1,334 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Pylontech Force",
+        "description": "How should Home Assistant reach the battery?",
+        "menu_options": {
+          "discover": "Search the network for the battery's Wi-Fi or LAN module",
+          "manual": "Enter an address",
+          "cloud": "Through the Solarman cloud"
+        }
+      },
+      "discover_none": {
+        "title": "No battery found",
+        "description": "{loggers} Solarman loggers answered the search, and none had a Pylontech BMS behind it that is not set up already. Next you can enter an address by hand: that of the battery's Wi-Fi or LAN module, or of a converter on its RS485 port."
+      },
+      "pick": {
+        "title": "Batteries found",
+        "description": "{count} Pylontech batteries answered. Pick the one to set up; set up the others the same way afterwards.",
+        "data": {
+          "battery": "Battery",
+          "send_statistics": "Send anonymous usage statistics"
+        },
+        "data_description": {
+          "send_statistics": "One report per day to {endpoint}: the integration's version, Home Assistant's version and installation type, the country you configured in Home Assistant, an approximate position rounded to about 11 km, the battery family (Force H1, H2 or H3), how it is reached (Wi-Fi or LAN module, Modbus TCP, RS485 converter or the Solarman cloud), how many modules and cells per module it has, its firmware, whether cell data is read, and how many polls failed since the last report. No reading: no voltage, no charge, no temperature. Never a name, an address, an exact position, a serial number or an entity name, and your IP address is not stored. It also sends a random id created when the integration was installed, so that the daily reports can be kept apart and erased on request (the server keeps it only as a hash, and it says nothing about who you are), a hash that links the beolink plugins running on the same Home Assistant, how many warnings and errors the integration logged since the previous report, and whether it is running or waiting to start again, never the messages themselves or the reason. Switching this off stops the reporting, and the installation is marked as having stopped. What has already been sent stays: it is anonymous, carries no free text and is stored per day, and which installations have existed is what the statistics are for. Erasure on request, from whoever runs the service. The full list: {privacy_url}"
+        }
+      },
+      "manual": {
+        "title": "Battery address",
+        "description": "The battery's control module has a Wi-Fi module (Force H2) or Wi-Fi and LAN ports (Force H3), which answer on port 8899. A converter on the BMS's RS485 port answers on its own port.",
+        "data": {
+          "host": "Address",
+          "port": "Port",
+          "transport": "Protocol",
+          "logger_serial": "Logger serial number (optional)",
+          "slave": "Modbus address of the BMS",
+          "send_statistics": "Send anonymous usage statistics"
+        },
+        "data_description": {
+          "host": "The IP address or name of the battery's Wi-Fi or LAN module, or of the converter on its RS485 port.",
+          "port": "8899 for the Wi-Fi or LAN module (Solarman), 502 for Modbus TCP, or the converter's own port.",
+          "transport": "Automatic tries Solarman, Modbus TCP and RTU over TCP in the order the port suggests.",
+          "logger_serial": "Only for the Solarman protocol, and read from the logger when left empty.",
+          "slave": "1 unless the installer changed it.",
+          "send_statistics": "One report per day to {endpoint}: the integration's version, Home Assistant's version and installation type, the country you configured in Home Assistant, an approximate position rounded to about 11 km, the battery family (Force H1, H2 or H3), how it is reached (Wi-Fi or LAN module, Modbus TCP, RS485 converter or the Solarman cloud), how many modules and cells per module it has, its firmware, whether cell data is read, and how many polls failed since the last report. No reading: no voltage, no charge, no temperature. Never a name, an address, an exact position, a serial number or an entity name, and your IP address is not stored. It also sends a random id created when the integration was installed, so that the daily reports can be kept apart and erased on request (the server keeps it only as a hash, and it says nothing about who you are), a hash that links the beolink plugins running on the same Home Assistant, how many warnings and errors the integration logged since the previous report, and whether it is running or waiting to start again, never the messages themselves or the reason. Switching this off stops the reporting, and the installation is marked as having stopped. What has already been sent stays: it is anonymous, carries no free text and is stored per day, and which installations have existed is what the statistics are for. Erasure on request, from whoever runs the service. The full list: {privacy_url}"
+        }
+      },
+      "dhcp_confirm": {
+        "title": "{name}",
+        "description": "A {name} answered at {host}. Set it up?",
+        "data": {
+          "send_statistics": "Send anonymous usage statistics"
+        },
+        "data_description": {
+          "send_statistics": "One report per day to {endpoint}: the integration's version, Home Assistant's version and installation type, the country you configured in Home Assistant, an approximate position rounded to about 11 km, the battery family (Force H1, H2 or H3), how it is reached (Wi-Fi or LAN module, Modbus TCP, RS485 converter or the Solarman cloud), how many modules and cells per module it has, its firmware, whether cell data is read, and how many polls failed since the last report. No reading: no voltage, no charge, no temperature. Never a name, an address, an exact position, a serial number or an entity name, and your IP address is not stored. It also sends a random id created when the integration was installed, so that the daily reports can be kept apart and erased on request (the server keeps it only as a hash, and it says nothing about who you are), a hash that links the beolink plugins running on the same Home Assistant, how many warnings and errors the integration logged since the previous report, and whether it is running or waiting to start again, never the messages themselves or the reason. Switching this off stops the reporting, and the installation is marked as having stopped. What has already been sent stays: it is anonymous, carries no free text and is stored per day, and which installations have existed is what the statistics are for. Erasure on request, from whoever runs the service. The full list: {privacy_url}"
+        }
+      },
+      "cloud": {
+        "title": "Solarman cloud",
+        "description": "The second way in, when the battery's logger cannot be reached on the local network. The data is at most five minutes old and has fewer values than the local way: no single cells. Solarman's OpenAPI ({openapi_url}) needs an app id and an app secret, which Solarman's customer service ({service_mail}) gives out on request, besides the account you use in the SOLARMAN Smart app.",
+        "data": {
+          "app_id": "App id",
+          "app_secret": "App secret",
+          "account": "Account (e-mail or user name)",
+          "password": "Password",
+          "org_id": "Organisation id (business accounts only)",
+          "send_statistics": "Send anonymous usage statistics"
+        },
+        "data_description": {
+          "password": "Only its SHA-256 hash is stored, which is what Solarman's API asks for.",
+          "org_id": "Leave empty for a private SOLARMAN Smart account.",
+          "send_statistics": "One report per day to {endpoint}: the integration's version, Home Assistant's version and installation type, the country you configured in Home Assistant, an approximate position rounded to about 11 km, the battery family (Force H1, H2 or H3), how it is reached (Wi-Fi or LAN module, Modbus TCP, RS485 converter or the Solarman cloud), how many modules and cells per module it has, its firmware, whether cell data is read, and how many polls failed since the last report. No reading: no voltage, no charge, no temperature. Never a name, an address, an exact position, a serial number or an entity name, and your IP address is not stored. It also sends a random id created when the integration was installed, so that the daily reports can be kept apart and erased on request (the server keeps it only as a hash, and it says nothing about who you are), a hash that links the beolink plugins running on the same Home Assistant, how many warnings and errors the integration logged since the previous report, and whether it is running or waiting to start again, never the messages themselves or the reason. Switching this off stops the reporting, and the installation is marked as having stopped. What has already been sent stays: it is anonymous, carries no free text and is stored per day, and which installations have existed is what the statistics are for. Erasure on request, from whoever runs the service. The full list: {privacy_url}"
+        }
+      },
+      "cloud_pick": {
+        "title": "Batteries in the cloud",
+        "description": "The account has several batteries. Pick the one to set up.",
+        "data": {
+          "battery": "Battery"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Solarman cloud",
+        "description": "Solarman no longer accepts the credentials of {account}. Enter the app secret and the password again.",
+        "data": {
+          "app_secret": "App secret",
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "title": "Battery address",
+        "description": "A new address for the same battery, for example after the module got a new IP address.",
+        "data": {
+          "host": "Address",
+          "port": "Port",
+          "transport": "Protocol",
+          "logger_serial": "Logger serial number (optional)",
+          "slave": "Modbus address of the BMS"
+        },
+        "data_description": {
+          "host": "The IP address or name of the battery's Wi-Fi or LAN module, or of the converter on its RS485 port.",
+          "port": "8899 for the Wi-Fi or LAN module (Solarman), 502 for Modbus TCP, or the converter's own port.",
+          "transport": "Automatic tries Solarman, Modbus TCP and RTU over TCP in the order the port suggests.",
+          "logger_serial": "Only for the Solarman protocol, and read from the logger when left empty.",
+          "slave": "1 unless the installer changed it."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nothing answered at that address and port. Check the address, and that Home Assistant can reach that network.",
+      "no_battery": "Something answered at that address, but no battery answered behind it. Is the battery switched on, and is the Modbus address right (1 unless it was changed)?",
+      "not_pylontech": "A device answered, but it is not a Pylontech BMS. It may be the logger of an inverter.",
+      "invalid_serial": "The logger's serial number is digits only. Leave it empty to have it read from the logger.",
+      "invalid_auth": "Solarman refused the app id, the app secret or the account.",
+      "cloud_unreachable": "The Solarman cloud did not answer. Try again in a while.",
+      "no_cloud_battery": "The account has no battery in the Solarman cloud."
+    },
+    "abort": {
+      "already_configured": "This battery is already set up.",
+      "not_pylontech": "No Pylontech battery answered at this address.",
+      "reauth_successful": "The new credentials work.",
+      "reconfigure_successful": "The battery's new address is saved.",
+      "another_battery": "A different battery answered at that address than the one set up here.",
+      "reconfigure_cloud": "A battery read through the cloud has no address to change. If the password or secret changed, Home Assistant asks for them by itself."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Pylontech Easyconf",
+        "data": {
+          "scan_interval": "Seconds between readings",
+          "cell_data": "Read every cell",
+          "send_statistics": "Send anonymous usage statistics"
+        },
+        "data_description": {
+          "scan_interval": "Locally 10 seconds at the least; the cloud has new data every five minutes.",
+          "cell_data": "Each cell's voltage and temperature. Off, the modules and the stack's highest and lowest cell are still read, with far fewer requests to the logger.",
+          "send_statistics": "One report per day to {endpoint}: the integration's version, Home Assistant's version and installation type, the country you configured in Home Assistant, an approximate position rounded to about 11 km, the battery family (Force H1, H2 or H3), how it is reached (Wi-Fi or LAN module, Modbus TCP, RS485 converter or the Solarman cloud), how many modules and cells per module it has, its firmware, whether cell data is read, and how many polls failed since the last report. No reading: no voltage, no charge, no temperature. Never a name, an address, an exact position, a serial number or an entity name, and your IP address is not stored. It also sends a random id created when the integration was installed, so that the daily reports can be kept apart and erased on request (the server keeps it only as a hash, and it says nothing about who you are), a hash that links the beolink plugins running on the same Home Assistant, how many warnings and errors the integration logged since the previous report, and whether it is running or waiting to start again, never the messages themselves or the reason. Switching this off stops the reporting, and the installation is marked as having stopped. What has already been sent stays: it is anonymous, carries no free text and is stored per day, and which installations have existed is what the statistics are for. Erasure on request, from whoever runs the service. The full list: {privacy_url}"
+        }
+      }
+    }
+  },
+  "selector": {
+    "transport": {
+      "options": {
+        "auto": "Automatic",
+        "solarman_v5": "Solarman (Wi-Fi or LAN module)",
+        "modbus_tcp": "Modbus TCP",
+        "rtu_over_tcp": "Modbus RTU over TCP (RS485 converter)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "bms_temperature": {
+        "name": "BMS temperature"
+      },
+      "cell_count": {
+        "name": "Cells"
+      },
+      "cell_temperature": {
+        "name": "Cell {cell} temperature"
+      },
+      "cell_temperature_max": {
+        "name": "Warmest cell",
+        "state_attributes": {
+          "module": {
+            "name": "Module"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "cell_temperature_min": {
+        "name": "Coldest cell",
+        "state_attributes": {
+          "module": {
+            "name": "Module"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "cell_voltage": {
+        "name": "Cell {cell} voltage"
+      },
+      "cell_voltage_max": {
+        "name": "Highest cell voltage",
+        "state_attributes": {
+          "module": {
+            "name": "Module"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "cell_voltage_min": {
+        "name": "Lowest cell voltage",
+        "state_attributes": {
+          "module": {
+            "name": "Module"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "cell_voltage_spread": {
+        "name": "Cell voltage spread"
+      },
+      "charge_current_limit": {
+        "name": "Charge current limit"
+      },
+      "charge_today": {
+        "name": "Charged today"
+      },
+      "charge_total": {
+        "name": "Charged in total"
+      },
+      "charge_voltage_limit": {
+        "name": "Charge voltage limit"
+      },
+      "current": {
+        "name": "Current"
+      },
+      "cycles": {
+        "name": "Cycles"
+      },
+      "discharge_current_limit": {
+        "name": "Discharge current limit"
+      },
+      "discharge_today": {
+        "name": "Discharged today"
+      },
+      "discharge_total": {
+        "name": "Discharged in total"
+      },
+      "discharge_voltage_limit": {
+        "name": "Discharge voltage limit"
+      },
+      "module_count": {
+        "name": "Modules"
+      },
+      "module_temperature": {
+        "name": "Temperature"
+      },
+      "module_temperature_max": {
+        "name": "Warmest module",
+        "state_attributes": {
+          "module": {
+            "name": "Module"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "module_temperature_min": {
+        "name": "Coldest module",
+        "state_attributes": {
+          "module": {
+            "name": "Module"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "module_voltage": {
+        "name": "Voltage"
+      },
+      "module_voltage_max": {
+        "name": "Highest module voltage",
+        "state_attributes": {
+          "module": {
+            "name": "Module"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "module_voltage_min": {
+        "name": "Lowest module voltage",
+        "state_attributes": {
+          "module": {
+            "name": "Module"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "power": {
+        "name": "Power"
+      },
+      "remaining_energy": {
+        "name": "Remaining energy"
+      },
+      "soc": {
+        "name": "State of charge"
+      },
+      "soh": {
+        "name": "State of health"
+      },
+      "state": {
+        "name": "State",
+        "state": {
+          "charging": "Charging",
+          "discharging": "Discharging",
+          "idle": "Idle"
+        }
+      },
+      "voltage": {
+        "name": "Voltage"
+      }
+    },
+    "binary_sensor": {
+      "fully_charged": {
+        "name": "Fully charged"
+      }
+    }
+  },
+  "device": {
+    "module": {
+      "name": "{model} module {number}"
+    }
+  }
+}

@@ -1,0 +1,334 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Pylontech Force",
+        "description": "Hur ska Home Assistant nå batteriet?",
+        "menu_options": {
+          "discover": "Sök på nätverket efter batteriets wifi- eller LAN-modul",
+          "manual": "Ange en adress",
+          "cloud": "Via Solarman-molnet"
+        }
+      },
+      "discover_none": {
+        "title": "Inget batteri hittades",
+        "description": "{loggers} Solarman-loggare svarade på sökningen, och ingen hade en Pylontech-BMS bakom sig som inte redan är konfigurerad. Härnäst kan du ange en adress för hand: den till batteriets wifi- eller LAN-modul, eller till en omvandlare på dess RS485-port."
+      },
+      "pick": {
+        "title": "Hittade batterier",
+        "description": "{count} Pylontech-batterier svarade. Välj det som ska konfigureras; de andra konfigureras på samma sätt efteråt.",
+        "data": {
+          "battery": "Batteri",
+          "send_statistics": "Skicka anonym användningsstatistik"
+        },
+        "data_description": {
+          "send_statistics": "En rapport per dygn till {endpoint}: integrationens version, Home Assistants version och installationstyp, landet du angett i Home Assistant, en ungefärlig position avrundad till ungefär 11 km, batteriets familj (Force H1, H2 eller H3), hur det nås (wifi- eller LAN-modul, Modbus TCP, RS485-omvandlare eller Solarman-molnet), hur många moduler och celler per modul det har, dess firmware, om celldata läses och hur många avläsningar som misslyckats sedan förra rapporten. Inga mätvärden: ingen spänning, ingen laddning, ingen temperatur. Aldrig ett namn, en adress, en exakt position, ett serienummer eller ett entitetsnamn, och din IP-adress sparas inte. Dessutom skickas ett slumpat id som skapas vid installationen, så att dygnsrapporterna kan hållas isär och raderas på begäran (servern sparar det bara som en hash, och det säger inget om vem du är), en hash som knyter ihop beolinks tillägg på samma Home Assistant, hur många varningar och fel integrationen loggat sedan förra rapporten, och om den är igång eller väntar på att starta igen, aldrig själva meddelandena eller skälet. Stänger du av den slutar rapporteringen, och installationen märks som avanmäld. Det som redan skickats står kvar: det är anonymt, bär ingen fritext och lagras per dygn, och vilka anläggningar som funnits är det statistiken är till för. Radering på begäran, av den som driver tjänsten. Hela listan: {privacy_url}"
+        }
+      },
+      "manual": {
+        "title": "Batteriets adress",
+        "description": "Batteriets styrenhet har en wifi-modul (Force H2) eller wifi- och LAN-portar (Force H3), som svarar på port 8899. En omvandlare på BMS:ens RS485-port svarar på sin egen port.",
+        "data": {
+          "host": "Adress",
+          "port": "Port",
+          "transport": "Protokoll",
+          "logger_serial": "Loggarens serienummer (valfritt)",
+          "slave": "BMS:ens Modbus-adress",
+          "send_statistics": "Skicka anonym användningsstatistik"
+        },
+        "data_description": {
+          "host": "IP-adressen eller namnet på batteriets wifi- eller LAN-modul, eller på omvandlaren på dess RS485-port.",
+          "port": "8899 för wifi- eller LAN-modulen (Solarman), 502 för Modbus TCP, eller omvandlarens egen port.",
+          "transport": "Automatiskt provar Solarman, Modbus TCP och RTU över TCP i den ordning porten antyder.",
+          "logger_serial": "Bara för Solarman-protokollet, och läses från loggaren om fältet lämnas tomt.",
+          "slave": "1 om installatören inte ändrat den.",
+          "send_statistics": "En rapport per dygn till {endpoint}: integrationens version, Home Assistants version och installationstyp, landet du angett i Home Assistant, en ungefärlig position avrundad till ungefär 11 km, batteriets familj (Force H1, H2 eller H3), hur det nås (wifi- eller LAN-modul, Modbus TCP, RS485-omvandlare eller Solarman-molnet), hur många moduler och celler per modul det har, dess firmware, om celldata läses och hur många avläsningar som misslyckats sedan förra rapporten. Inga mätvärden: ingen spänning, ingen laddning, ingen temperatur. Aldrig ett namn, en adress, en exakt position, ett serienummer eller ett entitetsnamn, och din IP-adress sparas inte. Dessutom skickas ett slumpat id som skapas vid installationen, så att dygnsrapporterna kan hållas isär och raderas på begäran (servern sparar det bara som en hash, och det säger inget om vem du är), en hash som knyter ihop beolinks tillägg på samma Home Assistant, hur många varningar och fel integrationen loggat sedan förra rapporten, och om den är igång eller väntar på att starta igen, aldrig själva meddelandena eller skälet. Stänger du av den slutar rapporteringen, och installationen märks som avanmäld. Det som redan skickats står kvar: det är anonymt, bär ingen fritext och lagras per dygn, och vilka anläggningar som funnits är det statistiken är till för. Radering på begäran, av den som driver tjänsten. Hela listan: {privacy_url}"
+        }
+      },
+      "dhcp_confirm": {
+        "title": "{name}",
+        "description": "Ett {name} svarade på {host}. Konfigurera det?",
+        "data": {
+          "send_statistics": "Skicka anonym användningsstatistik"
+        },
+        "data_description": {
+          "send_statistics": "En rapport per dygn till {endpoint}: integrationens version, Home Assistants version och installationstyp, landet du angett i Home Assistant, en ungefärlig position avrundad till ungefär 11 km, batteriets familj (Force H1, H2 eller H3), hur det nås (wifi- eller LAN-modul, Modbus TCP, RS485-omvandlare eller Solarman-molnet), hur många moduler och celler per modul det har, dess firmware, om celldata läses och hur många avläsningar som misslyckats sedan förra rapporten. Inga mätvärden: ingen spänning, ingen laddning, ingen temperatur. Aldrig ett namn, en adress, en exakt position, ett serienummer eller ett entitetsnamn, och din IP-adress sparas inte. Dessutom skickas ett slumpat id som skapas vid installationen, så att dygnsrapporterna kan hållas isär och raderas på begäran (servern sparar det bara som en hash, och det säger inget om vem du är), en hash som knyter ihop beolinks tillägg på samma Home Assistant, hur många varningar och fel integrationen loggat sedan förra rapporten, och om den är igång eller väntar på att starta igen, aldrig själva meddelandena eller skälet. Stänger du av den slutar rapporteringen, och installationen märks som avanmäld. Det som redan skickats står kvar: det är anonymt, bär ingen fritext och lagras per dygn, och vilka anläggningar som funnits är det statistiken är till för. Radering på begäran, av den som driver tjänsten. Hela listan: {privacy_url}"
+        }
+      },
+      "cloud": {
+        "title": "Solarman-molnet",
+        "description": "Andra vägen in, när batteriets loggare inte nås på det lokala nätet. Datan är upp till fem minuter gammal och har färre värden än den lokala vägen: inga enskilda celler. Solarmans OpenAPI ({openapi_url}) kräver ett app-id och en app-hemlighet, som Solarmans kundtjänst ({service_mail}) lämnar ut på begäran, utöver kontot du använder i appen SOLARMAN Smart.",
+        "data": {
+          "app_id": "App-id",
+          "app_secret": "App-hemlighet",
+          "account": "Konto (e-post eller användarnamn)",
+          "password": "Lösenord",
+          "org_id": "Organisations-id (bara företagskonton)",
+          "send_statistics": "Skicka anonym användningsstatistik"
+        },
+        "data_description": {
+          "password": "Bara dess SHA-256-hash sparas, vilket är vad Solarmans API vill ha.",
+          "org_id": "Lämna tomt för ett privat SOLARMAN Smart-konto.",
+          "send_statistics": "En rapport per dygn till {endpoint}: integrationens version, Home Assistants version och installationstyp, landet du angett i Home Assistant, en ungefärlig position avrundad till ungefär 11 km, batteriets familj (Force H1, H2 eller H3), hur det nås (wifi- eller LAN-modul, Modbus TCP, RS485-omvandlare eller Solarman-molnet), hur många moduler och celler per modul det har, dess firmware, om celldata läses och hur många avläsningar som misslyckats sedan förra rapporten. Inga mätvärden: ingen spänning, ingen laddning, ingen temperatur. Aldrig ett namn, en adress, en exakt position, ett serienummer eller ett entitetsnamn, och din IP-adress sparas inte. Dessutom skickas ett slumpat id som skapas vid installationen, så att dygnsrapporterna kan hållas isär och raderas på begäran (servern sparar det bara som en hash, och det säger inget om vem du är), en hash som knyter ihop beolinks tillägg på samma Home Assistant, hur många varningar och fel integrationen loggat sedan förra rapporten, och om den är igång eller väntar på att starta igen, aldrig själva meddelandena eller skälet. Stänger du av den slutar rapporteringen, och installationen märks som avanmäld. Det som redan skickats står kvar: det är anonymt, bär ingen fritext och lagras per dygn, och vilka anläggningar som funnits är det statistiken är till för. Radering på begäran, av den som driver tjänsten. Hela listan: {privacy_url}"
+        }
+      },
+      "cloud_pick": {
+        "title": "Batterier i molnet",
+        "description": "Kontot har flera batterier. Välj det som ska konfigureras.",
+        "data": {
+          "battery": "Batteri"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Solarman-molnet",
+        "description": "Solarman godtar inte längre uppgifterna för {account}. Ange app-hemligheten och lösenordet igen.",
+        "data": {
+          "app_secret": "App-hemlighet",
+          "password": "Lösenord"
+        }
+      },
+      "reconfigure": {
+        "title": "Batteriets adress",
+        "description": "En ny adress för samma batteri, till exempel när modulen fått en ny IP-adress.",
+        "data": {
+          "host": "Adress",
+          "port": "Port",
+          "transport": "Protokoll",
+          "logger_serial": "Loggarens serienummer (valfritt)",
+          "slave": "BMS:ens Modbus-adress"
+        },
+        "data_description": {
+          "host": "IP-adressen eller namnet på batteriets wifi- eller LAN-modul, eller på omvandlaren på dess RS485-port.",
+          "port": "8899 för wifi- eller LAN-modulen (Solarman), 502 för Modbus TCP, eller omvandlarens egen port.",
+          "transport": "Automatiskt provar Solarman, Modbus TCP och RTU över TCP i den ordning porten antyder.",
+          "logger_serial": "Bara för Solarman-protokollet, och läses från loggaren om fältet lämnas tomt.",
+          "slave": "1 om installatören inte ändrat den."
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Inget svarade på den adressen och porten. Kontrollera adressen och att Home Assistant når det nätet.",
+      "no_battery": "Något svarade på adressen, men inget batteri svarade bakom det. Är batteriet påslaget, och stämmer Modbus-adressen (1 om den inte ändrats)?",
+      "not_pylontech": "En enhet svarade, men det är ingen Pylontech-BMS. Det kan vara loggaren till en växelriktare.",
+      "invalid_serial": "Loggarens serienummer består bara av siffror. Lämna fältet tomt så läses det från loggaren.",
+      "invalid_auth": "Solarman godtog inte app-id, app-hemlighet eller kontot.",
+      "cloud_unreachable": "Solarman-molnet svarade inte. Försök igen om en stund.",
+      "no_cloud_battery": "Kontot har inget batteri i Solarman-molnet."
+    },
+    "abort": {
+      "already_configured": "Det här batteriet är redan konfigurerat.",
+      "not_pylontech": "Inget Pylontech-batteri svarade på den här adressen.",
+      "reauth_successful": "De nya uppgifterna fungerar.",
+      "reconfigure_successful": "Batteriets nya adress är sparad.",
+      "another_battery": "Ett annat batteri svarade på adressen än det som är konfigurerat här.",
+      "reconfigure_cloud": "Ett batteri som läses via molnet har ingen adress att ändra. Har lösenordet eller hemligheten ändrats frågar Home Assistant efter dem av sig själv."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Pylontech Easyconf",
+        "data": {
+          "scan_interval": "Sekunder mellan avläsningar",
+          "cell_data": "Läs varje cell",
+          "send_statistics": "Skicka anonym användningsstatistik"
+        },
+        "data_description": {
+          "scan_interval": "Lokalt minst 10 sekunder; molnet har nya data var femte minut.",
+          "cell_data": "Varje cells spänning och temperatur. Avstängt läses modulerna och stapelns högsta och lägsta cell ändå, med betydligt färre frågor till loggaren.",
+          "send_statistics": "En rapport per dygn till {endpoint}: integrationens version, Home Assistants version och installationstyp, landet du angett i Home Assistant, en ungefärlig position avrundad till ungefär 11 km, batteriets familj (Force H1, H2 eller H3), hur det nås (wifi- eller LAN-modul, Modbus TCP, RS485-omvandlare eller Solarman-molnet), hur många moduler och celler per modul det har, dess firmware, om celldata läses och hur många avläsningar som misslyckats sedan förra rapporten. Inga mätvärden: ingen spänning, ingen laddning, ingen temperatur. Aldrig ett namn, en adress, en exakt position, ett serienummer eller ett entitetsnamn, och din IP-adress sparas inte. Dessutom skickas ett slumpat id som skapas vid installationen, så att dygnsrapporterna kan hållas isär och raderas på begäran (servern sparar det bara som en hash, och det säger inget om vem du är), en hash som knyter ihop beolinks tillägg på samma Home Assistant, hur många varningar och fel integrationen loggat sedan förra rapporten, och om den är igång eller väntar på att starta igen, aldrig själva meddelandena eller skälet. Stänger du av den slutar rapporteringen, och installationen märks som avanmäld. Det som redan skickats står kvar: det är anonymt, bär ingen fritext och lagras per dygn, och vilka anläggningar som funnits är det statistiken är till för. Radering på begäran, av den som driver tjänsten. Hela listan: {privacy_url}"
+        }
+      }
+    }
+  },
+  "selector": {
+    "transport": {
+      "options": {
+        "auto": "Automatiskt",
+        "solarman_v5": "Solarman (wifi- eller LAN-modul)",
+        "modbus_tcp": "Modbus TCP",
+        "rtu_over_tcp": "Modbus RTU över TCP (RS485-omvandlare)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "bms_temperature": {
+        "name": "BMS-temperatur"
+      },
+      "cell_count": {
+        "name": "Celler"
+      },
+      "cell_temperature": {
+        "name": "Cell {cell} temperatur"
+      },
+      "cell_temperature_max": {
+        "name": "Varmaste cell",
+        "state_attributes": {
+          "module": {
+            "name": "Modul"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "cell_temperature_min": {
+        "name": "Kallaste cell",
+        "state_attributes": {
+          "module": {
+            "name": "Modul"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "cell_voltage": {
+        "name": "Cell {cell} spänning"
+      },
+      "cell_voltage_max": {
+        "name": "Högsta cellspänning",
+        "state_attributes": {
+          "module": {
+            "name": "Modul"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "cell_voltage_min": {
+        "name": "Lägsta cellspänning",
+        "state_attributes": {
+          "module": {
+            "name": "Modul"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "cell_voltage_spread": {
+        "name": "Cellspridning"
+      },
+      "charge_current_limit": {
+        "name": "Gräns för laddström"
+      },
+      "charge_today": {
+        "name": "Laddat i dag"
+      },
+      "charge_total": {
+        "name": "Laddat totalt"
+      },
+      "charge_voltage_limit": {
+        "name": "Gräns för laddspänning"
+      },
+      "current": {
+        "name": "Ström"
+      },
+      "cycles": {
+        "name": "Cykler"
+      },
+      "discharge_current_limit": {
+        "name": "Gräns för urladdningsström"
+      },
+      "discharge_today": {
+        "name": "Urladdat i dag"
+      },
+      "discharge_total": {
+        "name": "Urladdat totalt"
+      },
+      "discharge_voltage_limit": {
+        "name": "Gräns för urladdningsspänning"
+      },
+      "module_count": {
+        "name": "Moduler"
+      },
+      "module_temperature": {
+        "name": "Temperatur"
+      },
+      "module_temperature_max": {
+        "name": "Varmaste modul",
+        "state_attributes": {
+          "module": {
+            "name": "Modul"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "module_temperature_min": {
+        "name": "Kallaste modul",
+        "state_attributes": {
+          "module": {
+            "name": "Modul"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "module_voltage": {
+        "name": "Spänning"
+      },
+      "module_voltage_max": {
+        "name": "Högsta modulspänning",
+        "state_attributes": {
+          "module": {
+            "name": "Modul"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "module_voltage_min": {
+        "name": "Lägsta modulspänning",
+        "state_attributes": {
+          "module": {
+            "name": "Modul"
+          },
+          "cell": {
+            "name": "Cell"
+          }
+        }
+      },
+      "power": {
+        "name": "Effekt"
+      },
+      "remaining_energy": {
+        "name": "Kvarvarande energi"
+      },
+      "soc": {
+        "name": "Laddningsnivå"
+      },
+      "soh": {
+        "name": "Batterihälsa"
+      },
+      "state": {
+        "name": "Läge",
+        "state": {
+          "charging": "Laddar",
+          "discharging": "Laddar ur",
+          "idle": "Vilar"
+        }
+      },
+      "voltage": {
+        "name": "Spänning"
+      }
+    },
+    "binary_sensor": {
+      "fully_charged": {
+        "name": "Fulladdat"
+      }
+    }
+  },
+  "device": {
+    "module": {
+      "name": "{model} modul {number}"
+    }
+  }
+}
