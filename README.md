@@ -227,4 +227,7 @@ The register map and the Force H2 dump the tests decode come from
 Force H1/H2/H3 register profile and the logger's habits from
 [ha-solarman](https://github.com/davidrapan/ha-solarman) (MIT); the V5
 protocol from [pysolarmanv5](https://github.com/jmccrohan/pysolarmanv5)'s
-documentation. Not affiliated with Pylontech or Solarman.
+documentation. The Pylontech icon and logo in the integration's `brand`
+folder are Pylontech's trademarks, as Home Assistant's brands repository has
+them; the white-lettered logo for dark themes is made from that one. Not
+affiliated with Pylontech or Solarman.

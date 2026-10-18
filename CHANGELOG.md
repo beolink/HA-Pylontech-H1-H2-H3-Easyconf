@@ -9,6 +9,9 @@
   asked for up to three times, with a short random pause that grows between
   tries. The logger also handed one client the other's answer once; the
   length check refused it, as it must.
+- **Pylontech's own icon and logo** in the integration's `brand` folder, where
+  Home Assistant 2026.3 and later read them, with a white-lettered logo for
+  dark themes. The HACS action runs with no check switched off.
 
 ## [0.1.2] - 2026-10-18
 
