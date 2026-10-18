@@ -26,3 +26,9 @@ for name, path in (
         sys.modules[name] = module
 
 sys.path.insert(0, str(ROOT / "tests"))
+
+# The transports pause before asking a dropped request again (transport.py,
+# RETRY_PAUSE); the tests check that they ask again, not how long they wait.
+from custom_components.pylontech_easyconf import transport as _transport  # noqa: E402
+
+_transport.RETRY_PAUSE = (0.0, 0.01)

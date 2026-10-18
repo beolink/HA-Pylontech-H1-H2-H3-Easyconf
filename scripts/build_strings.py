@@ -86,6 +86,7 @@ ERRORS = {
 ABORTS = {
     "en": {
         "already_configured": "This battery is already set up.",
+        "already_in_progress": "This battery is already being set up.",
         "not_pylontech": "No Pylontech battery answered at this address.",
         "reauth_successful": "The new credentials work.",
         "reconfigure_successful": "The battery's new address is saved.",
@@ -94,6 +95,7 @@ ABORTS = {
     },
     "sv": {
         "already_configured": "Det här batteriet är redan konfigurerat.",
+        "already_in_progress": "Det här batteriet håller redan på att konfigureras.",
         "not_pylontech": "Inget Pylontech-batteri svarade på den här adressen.",
         "reauth_successful": "De nya uppgifterna fungerar.",
         "reconfigure_successful": "Batteriets nya adress är sparad.",

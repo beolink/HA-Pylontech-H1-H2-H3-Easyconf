@@ -26,14 +26,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # No check is switched off: HACS's default list wants the action passing
+      # with no `ignore` key. The brand check is met by the images the
+      # integration ships in custom_components/<domain>/brand/, which Home
+      # Assistant reads since 2026.3.
       - uses: hacs/action@main
         with:
           category: integration
-          # Brand images ship in the integration itself
-          # (custom_components/<domain>/brand/), which Home Assistant reads
-          # since 2026.3; the brands repository no longer takes custom
-          # integrations.
-          ignore: brands
 
   ruff:
     runs-on: ubuntu-latest

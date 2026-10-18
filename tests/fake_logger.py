@@ -37,6 +37,10 @@ class FakeBattery:
     missing: list[tuple[int, int]] = field(default_factory=list)
     #: Never answer at all.
     silent: bool = False
+    #: Pass over these requests (1-based, counted over the whole run), as a
+    #: logger does when another client asked at the same moment.
+    drop: set[int] = field(default_factory=set)
+    seen: int = 0
     requests: list[tuple[int, int]] = field(default_factory=list)
     wrong_serial_answers: int = 0
 
@@ -118,6 +122,9 @@ class FakeServer:
                 if frame.control != solarman_v5.REQUEST:
                     continue  # the client's answer to our heartbeat
                 if battery.silent:
+                    continue
+                battery.seen += 1
+                if battery.seen in battery.drop:
                     continue
                 handled += 1
                 if battery.heartbeat_every and handled % battery.heartbeat_every == 0:

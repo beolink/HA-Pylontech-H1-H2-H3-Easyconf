@@ -39,6 +39,12 @@ DEFAULT_PORTS = {SOLARMAN_V5: 8899, MODBUS_TCP: 502, RTU_OVER_TCP: 8899}
 DEFAULT_TIMEOUT = 6.0
 CONNECT_TIMEOUT = 6.0
 
+#: How many times a chunk is asked for before the read fails, and the pause
+#: before each new attempt, in seconds, grown by the attempt's number and
+#: drawn at random so as to step out of another client's run of requests.
+ATTEMPTS = 3
+RETRY_PAUSE = (0.3, 1.0)
+
 
 class TransportError(Exception):
     """The battery could not be reached or did not answer in time.
@@ -70,6 +76,7 @@ class Transport:
         #: Counters for the diagnostics and the anonymous report.
         self.requests = 0
         self.failures = 0
+        self.retries = 0
         self.reconnects = 0
         self.last_error: str | None = None
 
@@ -100,34 +107,58 @@ class Transport:
     async def read_registers(self, address: int, count: int) -> list[int]:
         """Read ``count`` holding registers from ``address``, in chunks.
 
-        Any failure closes the connection before it is raised, so the next
-        read starts on a clean stream. Modbus exceptions, which the battery
-        sent on purpose, leave it open.
+        A chunk that gets no usable answer is asked for again on a new
+        connection, up to ATTEMPTS times, after a short pause, before the read
+        fails. A Solarman logger passes one request at a time to the battery,
+        and when another client (ha-solarman, the logger's own upload) asks at
+        the same moment it drops one of them, or hands one client the other's
+        answer. On two houses where ha-solarman polls the same logger every
+        five seconds, 2 and 6 % of requests went that way, and an attempt
+        straight after a miss failed more often than chance, since the other
+        client's run of requests was still going. Any failure closes the
+        connection first, so the next attempt starts on a clean stream. Modbus
+        exceptions, which the battery sent on purpose, leave it open and are
+        not asked again.
         """
         values: list[int] = []
         async with self._lock:
             for start, size in modbus.chunks(address, count):
-                self.requests += 1
-                try:
-                    if not self.connected:
-                        await self._connect()
-                    async with asyncio.timeout(self.timeout):
-                        values.extend(await self._read(start, size))
-                except modbus.ModbusError as err:
-                    self.last_error = f"{start:#06x}: {err}"
-                    raise
-                except (OSError, TimeoutError, EOFError, FrameError, TransportError) as err:
-                    self.failures += 1
-                    self.last_error = f"{start:#06x}: {err!r}"
-                    await self.close()
-                    if isinstance(err, TransportError):
-                        raise
-                    raise TransportError(
-                        f"reading {size} registers at {start:#06x} from "
-                        f"{self.host}:{self.port}: {err!r}",
-                        connected=True,
-                    ) from err
+                values.extend(await self._read_chunk(start, size))
         return values
+
+    async def _read_chunk(self, start: int, size: int) -> list[int]:
+        for attempt in range(1, ATTEMPTS + 1):
+            if attempt > 1:
+                await asyncio.sleep(random.uniform(*RETRY_PAUSE) * (attempt - 1))
+            self.requests += 1
+            try:
+                if not self.connected:
+                    await self._connect()
+                async with asyncio.timeout(self.timeout):
+                    return await self._read(start, size)
+            except modbus.ModbusError as err:
+                self.last_error = f"{start:#06x}: {err}"
+                raise
+            except TransportError as err:
+                # Nothing took the connection: asking again would only wait
+                # out the connect timeout a second time.
+                self.failures += 1
+                self.last_error = f"{start:#06x}: {err}"
+                await self.close()
+                raise
+            except (OSError, TimeoutError, EOFError, FrameError) as err:
+                self.failures += 1
+                self.last_error = f"{start:#06x}: {err!r}"
+                await self.close()
+                if attempt < ATTEMPTS:
+                    self.retries += 1
+                    continue
+                raise TransportError(
+                    f"reading {size} registers at {start:#06x} from "
+                    f"{self.host}:{self.port}: {err!r}",
+                    connected=True,
+                ) from err
+        raise AssertionError("unreachable")
 
     async def _read(self, address: int, count: int) -> list[int]:
         raise NotImplementedError
@@ -151,6 +182,7 @@ class Transport:
             "slave": self.slave,
             "requests": self.requests,
             "failures": self.failures,
+            "retries": self.retries,
             "connections": self.reconnects,
             "last_error": self.last_error,
         }

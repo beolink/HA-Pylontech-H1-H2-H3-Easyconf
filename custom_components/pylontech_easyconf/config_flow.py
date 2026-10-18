@@ -216,7 +216,12 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
                               ) -> ConfigFlowResult:
         if user_input is not None:
             result, found = self._found[int(user_input["battery"])]
-            await self.async_set_unique_id(_unique_id(result, found.ip, result.port))
+            # Not stopped by a discovery of the same battery waiting in the
+            # list: the owner chose this way, and Home Assistant closes the
+            # discovery once this entry is made.
+            await self.async_set_unique_id(
+                _unique_id(result, found.ip, result.port), raise_on_progress=False
+            )
             self._abort_if_unique_id_configured(updates={CONF_HOST: found.ip})
             return self.async_create_entry(
                 title=_title(result.identity.model),
@@ -271,7 +276,9 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
             result, error = await self._probe_form(user_input)
             if result is not None:
                 host = user_input[CONF_HOST].strip()
-                await self.async_set_unique_id(_unique_id(result, host, result.port))
+                await self.async_set_unique_id(
+                    _unique_id(result, host, result.port), raise_on_progress=False
+                )
                 self._abort_if_unique_id_configured(updates={CONF_HOST: host})
                 return self.async_create_entry(
                     title=_title(result.identity.model),
@@ -411,7 +418,7 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def _create_cloud_entry(self, device: dict) -> ConfigFlowResult:
         sn = str(device.get("deviceSn"))
-        await self.async_set_unique_id(sn)
+        await self.async_set_unique_id(sn, raise_on_progress=False)
         self._abort_if_unique_id_configured()
         model = model_name(str(device.get("deviceModel") or "") or None)
         stats = self._cloud.pop(CONF_SEND_STATISTICS, True)

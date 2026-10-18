@@ -1,5 +1,43 @@
 # Changelog
 
+## [0.1.3] - 2026-10-18
+
+- **Two more tries, after a pause, for a request the logger drops.** On the
+  second house, where ha-solarman polls the same logger every five seconds,
+  6 % of requests were dropped, and a try straight after a miss failed more
+  often than chance: one reading in ten still failed on 0.1.2. A chunk is now
+  asked for up to three times, with a short random pause that grows between
+  tries. The logger also handed one client the other's answer once; the
+  length check refused it, as it must.
+
+## [0.1.2] - 2026-10-18
+
+- **A search by hand is no longer stopped by a discovery.** When Home
+  Assistant had already found the battery by DHCP and the discovery was
+  waiting in the list, setting the battery up by hand through the network
+  search, an address or the cloud ended in "already in progress". Now the
+  owner's own choice goes through and Home Assistant closes the waiting
+  discovery. Found on the first house the integration was installed on.
+- **A request the logger drops is asked again.** A Solarman logger passes one
+  request at a time to the battery and drops one when two clients ask at the
+  same moment, which on a Force H2 that ha-solarman also polls every five
+  seconds happened within the first reading. One dropped request no longer
+  fails the whole reading: it is asked once more on a new connection. The
+  diagnostics count the retries.
+- **Verified on a real Force H2** of five FH9637M modules, 150 cells: the cells
+  add up to 499.60 V, the modules to 499.57 V and the stack reads 499.6 V.
+
+## [0.1.1] - 2026-10-18
+
+- **Found by DHCP on a Force H3.** The Wi-Fi module of a Force H3 has a MAC
+  address from 40:2A:8F, not from the Solarman range the manifest listed, so
+  Home Assistant never offered the battery when the module joined the
+  network. Both ranges are listed now.
+- **A real Force H3 in the tests.** Six modules, 192 cells, read through its
+  own Wi-Fi module on 2026-10-18: the register map holds on the H3 as on the
+  H2, the cells add up to 640.37 V, the modules to 640.36 V and the stack reads
+  640.3 V.
+
 ## [0.1.0] - 2026-10-18
 
 The first release: every value a Pylontech Force H1, H2 or H3 BMS has, in

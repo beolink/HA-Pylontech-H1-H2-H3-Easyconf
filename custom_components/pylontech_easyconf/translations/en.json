@@ -118,6 +118,7 @@
     },
     "abort": {
       "already_configured": "This battery is already set up.",
+      "already_in_progress": "This battery is already being set up.",
       "not_pylontech": "No Pylontech battery answered at this address.",
       "reauth_successful": "The new credentials work.",
       "reconfigure_successful": "The battery's new address is saved.",

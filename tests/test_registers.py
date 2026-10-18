@@ -176,3 +176,45 @@ def test_force_h3_string_of_96_cells():
     assert s.modules[2].cells[31].voltage == pytest.approx(3.342)
     assert s.cell_voltage_spread_mv == 61
     assert s.discharge_current_limit == pytest.approx(50.0)
+
+
+def test_a_real_force_h3_of_six_modules():
+    # Read on 2026-10-18 from a Force H3 behind its own Wi-Fi module.
+    from fixtures import force_h3_real as real
+
+    identity = registers.decode_identity(real.IDENTITY)
+    assert (identity.device_name, identity.model, identity.firmware) == (
+        "ForceHB_H3", "Force H3", "1.2")
+    s = registers.decode(real.SUMMARY, real.MODULE_VOLTAGES, real.MODULE_TEMPERATURES,
+                         real.CELLS, real.CELL_TEMPERATURES)
+    assert (s.module_count, s.cell_count, s.cells_per_module) == (6, 192, 32)
+    assert (s.state, s.soc, s.soh, s.cycles) == ("idle", 95, 99, 311)
+    assert s.voltage == pytest.approx(640.3)
+    assert sum(c.voltage for m in s.modules for c in m.cells) == pytest.approx(640.37, abs=0.01)
+    assert sum(m.voltage for m in s.modules) == pytest.approx(640.36, abs=0.01)
+    assert (s.cell_voltage_max.value, s.cell_voltage_max.module, s.cell_voltage_max.cell) == (
+        pytest.approx(3.337), 6, 13)
+    assert (s.cell_temperature_min.value, s.cell_temperature_min.module) == (
+        pytest.approx(19.7), 1)
+    assert s.remaining_energy_kwh == pytest.approx(29.294)
+    assert (s.charge_total_kwh, s.discharge_total_kwh) == (8514, 8279)
+    assert s.charge_current_limit == pytest.approx(10.0)
+    assert s.discharge_current_limit == pytest.approx(50.0)
+
+
+def test_a_real_force_h2_of_five_modules():
+    # Read on 2026-10-18 from a Force H2 behind its own Wi-Fi module.
+    from fixtures import force_h2_real5 as real
+
+    identity = registers.decode_identity(real.IDENTITY)
+    assert (identity.model, identity.firmware) == ("Force H2", "1.6")
+    s = registers.decode(real.SUMMARY, real.MODULE_VOLTAGES, real.MODULE_TEMPERATURES,
+                         real.CELLS, real.CELL_TEMPERATURES)
+    assert (s.module_count, s.cell_count, s.cells_per_module) == (5, 150, 30)
+    assert (s.state, s.soc, s.soh, s.cycles) == ("charging", 77, 98, 423)
+    assert s.current == pytest.approx(0.17)
+    assert sum(c.voltage for m in s.modules for c in m.cells) == pytest.approx(499.60, abs=0.01)
+    assert sum(m.voltage for m in s.modules) == pytest.approx(499.57, abs=0.01)
+    assert (s.cell_temperature_min.value, s.cell_temperature_min.module,
+            s.cell_temperature_min.cell) == (pytest.approx(12.0), 1, 8)
+    assert s.remaining_energy_kwh == pytest.approx(13.678)

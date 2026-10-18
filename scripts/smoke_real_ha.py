@@ -314,6 +314,13 @@ async def run(hass, failures: list[str]) -> None:
         server = FakeServer(h3_battery)
         server.server = await asyncio.start_server(server._client, "127.0.0.1", 8899)
         try:
+            # Home Assistant saw the logger by DHCP first, and that discovery is
+            # waiting for a yes when the owner searches by hand: the search must
+            # still set the battery up, and the discovery must go.
+            result = await flow.async_init(DOMAIN, context={"source": "dhcp"}, data=DhcpServiceInfo(
+                ip="127.0.0.1", hostname="lsw3", macaddress="e8fdf8000003"))
+            assert kind(result) == "form" and result["step_id"] == "dhcp_confirm", result
+            waiting = result["flow_id"]
             result = await flow.async_init(DOMAIN, context={"source": "user"})
             result = await flow.async_configure(result["flow_id"], {"next_step_id": "discover"})
             assert kind(result) == "form" and result["step_id"] == "pick", result
@@ -323,6 +330,7 @@ async def run(hass, failures: list[str]) -> None:
             assert kind(result) == "create_entry", result
             await hass.async_block_till_done()
             h3_entry = result["result"]
+            assert waiting not in [f["flow_id"] for f in flow.async_progress()], "discovery left"
             assert h3_entry.title == "Pylontech Force H3"
             assert h3_entry.data["mac"] == "e8:fd:f8:00:00:03"
             assert h3_entry.data["port"] == 8899
@@ -339,7 +347,8 @@ async def run(hass, failures: list[str]) -> None:
             assert len(cells) == 96, len(cells)
             stack = device(t, h3_entry.entry_id)
             assert ("mac", "e8:fd:f8:00:00:03") in stack.connections
-            ok("network search: the logger found, a Force H3 with 96 cells set up by name")
+            ok("network search with a DHCP discovery waiting: a Force H3 with 96 cells set up by "
+               "name, the discovery closed")
 
             result = await flow.async_init(DOMAIN, context={"source": "dhcp"}, data=DhcpServiceInfo(
                 ip="127.0.0.1", hostname="lsw3", macaddress="e8fdf8000003"))

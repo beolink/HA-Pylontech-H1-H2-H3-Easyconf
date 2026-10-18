@@ -118,6 +118,7 @@
     },
     "abort": {
       "already_configured": "Det här batteriet är redan konfigurerat.",
+      "already_in_progress": "Det här batteriet håller redan på att konfigureras.",
       "not_pylontech": "Inget Pylontech-batteri svarade på den här adressen.",
       "reauth_successful": "De nya uppgifterna fungerar.",
       "reconfigure_successful": "Batteriets nya adress är sparad.",

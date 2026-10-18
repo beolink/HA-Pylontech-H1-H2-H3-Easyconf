@@ -116,9 +116,63 @@ def test_a_silent_device_times_out_and_the_connection_is_dropped():
                 await t.read_registers(0x1100, 4)
             assert err.value.connected
             assert not t.connected
-            assert t.failures == 1
+            # Asked three times, on three connections, before giving up.
+            assert (t.failures, t.retries, server.connections) == (3, 2, 3)
 
     run(go())
+
+
+def test_a_request_the_logger_drops_is_asked_again():
+    # The third request (0x1460) is passed over, as when ha-solarman asked at
+    # the same moment; the reading still comes whole.
+    battery = FakeBattery(h2.bank(), drop={3})
+
+    async def go():
+        async with FakeServer(battery) as server:
+            t = transport.make_transport("solarman_v5", "127.0.0.1", server.port,
+                                         serial=battery.serial, timeout=0.3)
+            try:
+                reading = await reader.read_snapshot(t)
+            finally:
+                await t.close()
+            return reading, t, server
+
+    reading, t, server = run(go())
+    assert reading.snapshot.modules[1].voltage == pytest.approx(98.24)
+    assert (t.retries, t.failures, server.connections) == (1, 1, 2)
+
+
+def test_a_request_dropped_twice_is_asked_a_third_time():
+    battery = FakeBattery(h2.bank(), drop={3, 4})
+
+    async def go():
+        async with FakeServer(battery) as server:
+            t = transport.make_transport("solarman_v5", "127.0.0.1", server.port,
+                                         serial=battery.serial, timeout=0.3)
+            try:
+                return await reader.read_snapshot(t), t
+            finally:
+                await t.close()
+
+    reading, t = run(go())
+    assert reading.snapshot.modules[0].voltage == pytest.approx(98.25)
+    assert (t.retries, t.failures) == (2, 2)
+
+
+def test_a_request_dropped_three_times_fails_the_reading():
+    battery = FakeBattery(h2.bank(), drop={3, 4, 5})
+
+    async def go():
+        async with FakeServer(battery) as server:
+            t = transport.make_transport("solarman_v5", "127.0.0.1", server.port,
+                                         serial=battery.serial, timeout=0.3)
+            try:
+                await reader.read_snapshot(t)
+            finally:
+                await t.close()
+
+    with pytest.raises(transport.TransportError):
+        run(go())
 
 
 def test_nobody_listening_is_not_connected():
@@ -127,6 +181,7 @@ def test_nobody_listening_is_not_connected():
         with pytest.raises(transport.TransportError) as err:
             await t.read_registers(0x1100, 4)
         assert not err.value.connected
+        assert t.retries == 0  # no second wait for a connection nobody takes
 
     run(go())
 
@@ -157,7 +212,7 @@ def test_the_connection_is_opened_again_after_a_failure():
                 await t.read_registers(0x1107, 1)
             battery.silent = False
             assert await t.read_registers(0x1107, 1) == [33]
-            assert server.connections == 2
+            assert server.connections == 4
             await t.close()
 
     run(go())
