@@ -20,7 +20,9 @@ In this order of preference; the set-up finds the first by itself.
    8899, in the Solarman V5 protocol. The integration speaks that protocol
    itself, reads the logger's serial number from the logger, and asks the BMS
    behind it for its registers.
-2. **Modbus TCP**, port 502, for a logger or gateway that offers it.
+2. **Modbus TCP**, for a logger or gateway that offers it: port 502, or 8899
+   on an Elfin (High-Flying) module, as the LAN connection of one Force H3
+   turned out to be.
 3. **An RS485 converter** on the BMS's RS485 port (an Elfin EW11, a Waveshare
    RS485-to-Ethernet and the like, in transparent mode, 9600 baud unless the
    BMS was set to 115200), for a battery whose module cannot be reached. On a
@@ -55,9 +57,13 @@ one of three:
 
 - **Search the network.** The integration asks every Solarman logger on the
   networks Home Assistant is on who it is (a UDP broadcast on port 48899),
-  asks each one whether a Pylontech BMS is behind it, and offers the
-  batteries it found by name. Pick one; nothing to type. A logger in front of
-  an inverter is recognised as such and left out.
+  and tries a connection to ports 8899 and 502 on every address of those
+  networks, for a Modbus TCP gateway that answers no greeting (an Elfin
+  module from High-Flying, as on one Force H3). It asks each module it found
+  whether a Pylontech BMS is behind it, reading only the BMS's name, and
+  offers the batteries by name. Pick one; nothing to type. A logger in front
+  of an inverter is recognised as such and left out. The scan takes a few
+  seconds on a home network and is skipped on a network larger than a /22.
 - **Enter an address.** For a battery on another network than Home
   Assistant's, a logger that does not answer the search, or an RS485
   converter. The address, the port (8899 for the module, 502 for Modbus TCP,
@@ -69,9 +75,12 @@ one of three:
   stored, which is what Solarman's API asks for. If the account has several
   batteries, you pick one.
 
-Home Assistant also offers a battery by itself when it sees a Solarman logger
-join the network and a Pylontech BMS answers behind it, and it follows a
-logger that comes back on a new address. *Reconfigure* on the integration's
+Home Assistant also offers a battery by itself when it sees the battery's
+module join the network (a Solarman logger, MAC 40:2A:8F or E8:FD:F8, or a
+High-Flying gateway, 74:E9:D8) and a Pylontech BMS answers behind it, in
+either protocol, and it follows a module that comes back on a new address.
+It sees a module only when it asks for an address, which can take hours;
+the search above finds it at once. *Reconfigure* on the integration's
 entry sets a new address by hand.
 
 ## What you get

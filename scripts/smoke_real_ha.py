@@ -310,7 +310,13 @@ async def run(hass, failures: list[str]) -> None:
         async def loopback(_hass):
             return ["127.0.0.1"]
 
+        async def no_hosts(_hass):
+            return []
+
+        # The greeting goes to the loopback responder, and the port scan is
+        # kept off the network this runs on.
         config_flow._broadcast_targets = loopback
+        config_flow._scan_hosts = no_hosts
         server = FakeServer(h3_battery)
         server.server = await asyncio.start_server(server._client, "127.0.0.1", 8899)
         try:
@@ -364,9 +370,51 @@ async def run(hass, failures: list[str]) -> None:
             flow.async_abort(result["flow_id"])
             ok("DHCP for a known logger, by MAC and by serial; a search with nothing new")
             assert await hass.config_entries.async_unload(h3_entry.entry_id)
+            # Removed, so the next step can use the same address and port.
+            await hass.config_entries.async_remove(h3_entry.entry_id)
         finally:
             udp.close()
             await server.close()
+
+        # 6b. A Modbus TCP gateway on 8899 that answers no greeting, as the
+        # Elfin module on one Force H3 does: DHCP must recognise its MAC and
+        # find the battery in Modbus TCP, and the search must find it by the
+        # port scan alone.
+        gw_battery = FakeBattery(h2.bank(), kind="modbus_tcp")
+        gateway = FakeServer(gw_battery)
+        gateway.server = await asyncio.start_server(gateway._client, "127.0.0.1", 8899)
+
+        async def no_targets(_hass):
+            return []
+
+        config_flow._broadcast_targets = no_targets
+        config_flow._scan_hosts = loopback
+        try:
+            result = await flow.async_init(DOMAIN, context={"source": "dhcp"}, data=DhcpServiceInfo(
+                ip="127.0.0.1", hostname="elfin-ee11", macaddress="74e9d8ecfe57"))
+            assert kind(result) == "form" and result["step_id"] == "dhcp_confirm", result
+            assert result["description_placeholders"]["name"] == "Pylontech Force H2"
+            waiting = result["flow_id"]
+            result = await flow.async_init(DOMAIN, context={"source": "user"})
+            result = await flow.async_configure(result["flow_id"], {"next_step_id": "discover"})
+            assert kind(result) == "form" and result["step_id"] == "pick", result
+            labels = [o["label"] for o in result["data_schema"].schema["battery"].config["options"]]
+            assert labels == ["Pylontech Force H2, 127.0.0.1:8899 (modbus tcp)"], labels
+            result = await flow.async_configure(result["flow_id"], {"battery": "0",
+                                                                    "send_statistics": False})
+            assert kind(result) == "create_entry", result
+            await hass.async_block_till_done()
+            gw_entry = result["result"]
+            assert (gw_entry.data["transport"], gw_entry.data["port"]) == ("modbus_tcp", 8899)
+            assert "mac" not in gw_entry.data
+            assert waiting not in [f["flow_id"] for f in flow.async_progress()]
+            assert gw_entry.state is ConfigEntryState.LOADED
+            assert state("sensor", f"{h2.SERIAL}_soc").state == "33"
+            ok("a Modbus TCP gateway that answers no greeting: DHCP knows its MAC, the port scan "
+               "finds it, the battery reads in Modbus TCP")
+            assert await hass.config_entries.async_unload(gw_entry.entry_id)
+        finally:
+            await gateway.close()
     else:
         print("smoke   skip  network search and DHCP: port 8899 or 48899 is taken here")
 

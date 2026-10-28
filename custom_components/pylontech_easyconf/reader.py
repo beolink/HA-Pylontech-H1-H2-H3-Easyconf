@@ -129,8 +129,13 @@ def attempts(kind: str, port: int | None) -> list[tuple[str, int]]:
 
 
 async def probe(host: str, port: int | None = None, kind: str = AUTO, serial: int = 0,
-                slave: int = 1, timeout: float = DEFAULT_TIMEOUT) -> ProbeResult:
+                slave: int = 1, timeout: float = DEFAULT_TIMEOUT,
+                order: Sequence[tuple[str, int]] | None = None) -> ProbeResult:
     """Find the protocol that reaches a Pylontech BMS at ``host``.
+
+    ``order`` names the protocols and ports to try, in that order, in place
+    of the ones ``kind`` and ``port`` imply. Each is asked once: a device
+    that speaks something else costs one timeout, not one per retry.
 
     Raises ProbeError with ``cannot_connect`` when nothing took the
     connection, ``no_battery`` when something did but no battery answered,
@@ -138,8 +143,9 @@ async def probe(host: str, port: int | None = None, kind: str = AUTO, serial: in
     (the logger of an inverter, say).
     """
     reason, detail = "cannot_connect", ""
-    for each_kind, each_port in attempts(kind, port):
-        transport = make_transport(each_kind, host, each_port, slave, serial, timeout)
+    for each_kind, each_port in order or attempts(kind, port):
+        transport = make_transport(each_kind, host, each_port, slave, serial, timeout,
+                                   attempts=1)
         try:
             identity = await read_identity(transport)
         except TransportError as err:

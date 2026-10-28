@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.4] - 2026-10-28
+
+- **The search finds a battery behind a Modbus TCP gateway too.** On one
+  Force H3 the LAN connection is a High-Flying (Elfin) module that speaks
+  plain Modbus TCP on port 8899 and does not answer the Solarman loggers'
+  UDP greeting, so the search never saw it and the address had to be typed.
+  The search now also tries a connection to ports 8899 and 502 on every
+  address of the networks Home Assistant is on (a few seconds for a home
+  network, skipped above a /22), and asks whatever takes one for the BMS's
+  name, read only. A logger found by its greeting is asked in its own
+  protocol first and then as plain Modbus TCP.
+- **DHCP knows that module.** High-Flying's MAC range 74:E9:D8 is listed, and
+  a module Home Assistant sees joining the network is asked in either
+  protocol, Solarman V5 first and then Modbus TCP on 502 and 8899, as an
+  address typed in already was.
+- **One try per protocol when probing.** Finding out what an address speaks
+  asks each protocol once; the three tries per request are for polling a
+  battery already set up, so a device that speaks something else costs one
+  wait, not three.
+- An address already set up is recognised by address and port together, so a
+  second module at the same address on another port is still offered.
+
 ## [0.1.3] - 2026-10-18
 
 - **Two more tries, after a pause, for a request the logger drops.** On the

@@ -1,9 +1,11 @@
 """Setting up a battery: found on the network, typed in, or via the cloud.
 
 The first choice is the easy one: the integration asks every Solarman logger
-on the networks Home Assistant is on who it is, asks each whether a Pylontech
+on the networks Home Assistant is on who it is, looks on the same networks for
+anything that takes a connection on Modbus's ports 8899 and 502 (a Modbus TCP
+gateway does not answer the loggers' greeting), asks each whether a Pylontech
 BMS is behind it, and offers the batteries it found by name, with no address,
-no port and no serial number to type. A logger that Home Assistant sees
+no port and no serial number to type. A module that Home Assistant sees
 coming onto the network (DHCP) is asked the same and offered on its own.
 Typing an address is the second way, for a battery on another network, an
 RS485 converter, or a logger that does not answer the search; the protocol
@@ -14,6 +16,7 @@ logger cannot be reached from Home Assistant at all.
 from __future__ import annotations
 
 import asyncio
+from collections import defaultdict
 import logging
 from typing import Any
 
@@ -77,12 +80,12 @@ from .const import (
 )
 from .reader import AUTO, ProbeError, ProbeResult
 from .registers import model_name
-from .transport import KINDS, SOLARMAN_V5
+from .transport import KINDS, MODBUS_TCP, SOLARMAN_V5
 
 _LOGGER = logging.getLogger(__name__)
 
 PROBE_TIMEOUT = 4.0
-MAX_PROBED = 16
+MAX_PROBED = 32
 
 
 def _unique_id(result: ProbeResult, host: str, port: int) -> str:
@@ -147,8 +150,8 @@ def _password() -> TextSelector:
     return TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
 
 
-async def _broadcast_targets(hass) -> list[str]:
-    """The broadcast address of every network Home Assistant is on."""
+async def _local_networks(hass) -> list[tuple[str, int]]:
+    """(address, prefix) of every network Home Assistant's enabled adapters are on."""
     from homeassistant.components import network
 
     networks: list[tuple[str, int]] = []
@@ -157,7 +160,23 @@ async def _broadcast_targets(hass) -> list[str]:
             continue
         for ip in adapter.get("ipv4") or []:
             networks.append((ip["address"], ip["network_prefix"]))
-    return discovery.broadcast_addresses(networks)
+    return networks
+
+
+async def _broadcast_targets(hass) -> list[str]:
+    """The broadcast address of every network Home Assistant is on."""
+    return discovery.broadcast_addresses(await _local_networks(hass))
+
+
+async def _scan_hosts(hass) -> list[str]:
+    """Every other address of the networks Home Assistant is on."""
+    return discovery.scan_hosts(await _local_networks(hass))
+
+
+def _found_label(result: ProbeResult, found: discovery.FoundLogger) -> str:
+    where = f"{found.ip}:{result.port}" if result.kind != SOLARMAN_V5 else found.ip
+    via = f"logger {found.serial}" if found.serial else result.kind.replace("_", " ")
+    return f"{_title(result.identity.model)}, {where} ({via})"
 
 
 class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -166,6 +185,7 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         self._found: list[tuple[ProbeResult, discovery.FoundLogger]] = []
         self._loggers_seen = 0
+        self._gateways_seen = 0
         self._candidate: tuple[ProbeResult, str, str | None] | None = None
         self._cloud: dict[str, Any] = {}
         self._batteries: list[dict] = []
@@ -182,21 +202,42 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_discover(self, user_input: dict[str, Any] | None = None
                                   ) -> ConfigFlowResult:
-        targets = await _broadcast_targets(self.hass)
-        loggers = await discovery.scan(targets)
+        targets, hosts = await asyncio.gather(_broadcast_targets(self.hass),
+                                              _scan_hosts(self.hass))
+        loggers, open_ports = await asyncio.gather(discovery.scan(targets),
+                                                   discovery.tcp_scan(hosts))
+        configured = {(e.data.get(CONF_HOST), e.data.get(CONF_PORT))
+                      for e in self._async_current_entries()}
+        # Who to ask, and how: a logger that answered the greeting in its own
+        # protocol first, then as plain Modbus TCP (a logger switched to it);
+        # anything else that took a connection as Modbus TCP first.
+        ask_list: dict[str, tuple[list[tuple[str, int]], discovery.FoundLogger]] = {}
+        for logger in loggers:
+            if (logger.ip, 8899) not in configured:
+                ask_list[logger.ip] = ([(SOLARMAN_V5, 8899), (MODBUS_TCP, 8899)], logger)
+        ports_by_host: dict[str, set[int]] = defaultdict(set)
+        for host, port in open_ports:
+            if host not in ask_list and (host, port) not in configured:
+                ports_by_host[host].add(port)
+        for host, ports in ports_by_host.items():
+            order = [(MODBUS_TCP, port) for port in discovery.SCAN_PORTS if port in ports]
+            if 8899 in ports and host not in {lg.ip for lg in loggers}:
+                order.append((SOLARMAN_V5, 8899))
+            ask_list[host] = (order, discovery.FoundLogger(host, "", 0))
         self._loggers_seen = len(loggers)
-        configured = {e.data.get(CONF_HOST) for e in self._async_current_entries()}
-        loggers = [lg for lg in loggers if lg.ip not in configured][:MAX_PROBED]
+        self._gateways_seen = len(ports_by_host)
 
-        async def ask(found: discovery.FoundLogger):
+        async def ask(order: list[tuple[str, int]], found: discovery.FoundLogger):
             try:
-                return await reader.probe(found.ip, 8899, SOLARMAN_V5, found.serial,
-                                          timeout=PROBE_TIMEOUT), found
+                return await reader.probe(found.ip, serial=found.serial, timeout=PROBE_TIMEOUT,
+                                          order=order), found
             except ProbeError as err:
-                _LOGGER.debug("No Pylontech behind the logger at %s: %s", found.ip, err)
+                _LOGGER.debug("No Pylontech at %s: %s", found.ip, err)
                 return None
 
-        answers = await asyncio.gather(*(ask(found) for found in loggers))
+        answers = await asyncio.gather(
+            *(ask(order, found) for order, found in list(ask_list.values())[:MAX_PROBED])
+        )
         self._found = [a for a in answers if a is not None]
         if not self._found:
             return await self.async_step_discover_none()
@@ -209,7 +250,8 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
         return self.async_show_form(
             step_id="discover_none",
             data_schema=vol.Schema({}),
-            description_placeholders={"loggers": str(self._loggers_seen)},
+            description_placeholders={"loggers": str(self._loggers_seen),
+                                      "gateways": str(self._gateways_seen)},
         )
 
     async def async_step_pick(self, user_input: dict[str, Any] | None = None
@@ -225,15 +267,12 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured(updates={CONF_HOST: found.ip})
             return self.async_create_entry(
                 title=_title(result.identity.model),
-                data=_local_data(result, found.ip, DEFAULT_SLAVE, format_mac(found.mac)),
+                data=_local_data(result, found.ip, DEFAULT_SLAVE,
+                                 format_mac(found.mac) if found.mac else None),
                 options={CONF_SEND_STATISTICS: user_input.get(CONF_SEND_STATISTICS, True)},
             )
         options = [
-            SelectOptionDict(
-                value=str(index),
-                label=f"{_title(result.identity.model)}, {found.ip} "
-                      f"(logger {found.serial})",
-            )
+            SelectOptionDict(value=str(index), label=_found_label(result, found))
             for index, (result, found) in enumerate(self._found)
         ]
         return self.async_show_form(
@@ -308,8 +347,10 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
                     )
                     self.hass.config_entries.async_schedule_reload(entry.entry_id)
                 return self.async_abort(reason="already_configured")
+        # A Solarman logger in its own protocol first, then Modbus TCP on 502
+        # and 8899, where a Modbus TCP gateway such as an Elfin module answers.
         try:
-            result = await reader.probe(ip, 8899, SOLARMAN_V5, timeout=PROBE_TIMEOUT)
+            result = await reader.probe(ip, 8899, AUTO, timeout=PROBE_TIMEOUT)
         except ProbeError:
             return self.async_abort(reason="not_pylontech")
         await self.async_set_unique_id(_unique_id(result, ip, result.port))

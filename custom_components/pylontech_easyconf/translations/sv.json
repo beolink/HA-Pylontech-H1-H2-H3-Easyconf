@@ -13,7 +13,7 @@
       },
       "discover_none": {
         "title": "Inget batteri hittades",
-        "description": "{loggers} Solarman-loggare svarade på sökningen, och ingen hade en Pylontech-BMS bakom sig som inte redan är konfigurerad. Härnäst kan du ange en adress för hand: den till batteriets wifi- eller LAN-modul, eller till en omvandlare på dess RS485-port."
+        "description": "{loggers} Solarman-loggare svarade på sökningen och {gateways} andra adresser tog emot en anslutning på Modbus-portarna 8899 och 502, och ingen hade en Pylontech-BMS bakom sig som inte redan är konfigurerad. Härnäst kan du ange en adress för hand: den till batteriets wifi- eller LAN-modul, eller till en omvandlare på dess RS485-port."
       },
       "pick": {
         "title": "Hittade batterier",

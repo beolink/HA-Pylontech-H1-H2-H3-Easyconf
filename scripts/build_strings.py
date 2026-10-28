@@ -188,13 +188,16 @@ def config(lang: str) -> dict:
             "discover_none": {
                 "title": "No battery found" if en else "Inget batteri hittades",
                 "description": (
-                    "{loggers} Solarman loggers answered the search, and none had a Pylontech BMS "
+                    "{loggers} Solarman loggers answered the search and {gateways} other addresses "
+                    "took a connection on Modbus's ports 8899 and 502, and none had a Pylontech BMS "
                     "behind it that is not set up already. Next you can enter an address by hand: "
                     "that of the battery's Wi-Fi or LAN module, or of a converter on its RS485 port."
                     if en else
-                    "{loggers} Solarman-loggare svarade på sökningen, och ingen hade en Pylontech-BMS "
-                    "bakom sig som inte redan är konfigurerad. Härnäst kan du ange en adress för hand: "
-                    "den till batteriets wifi- eller LAN-modul, eller till en omvandlare på dess RS485-port."
+                    "{loggers} Solarman-loggare svarade på sökningen och {gateways} andra adresser "
+                    "tog emot en anslutning på Modbus-portarna 8899 och 502, och ingen hade en "
+                    "Pylontech-BMS bakom sig som inte redan är konfigurerad. Härnäst kan du ange en "
+                    "adress för hand: den till batteriets wifi- eller LAN-modul, eller till en "
+                    "omvandlare på dess RS485-port."
                 ),
             },
             "pick": {

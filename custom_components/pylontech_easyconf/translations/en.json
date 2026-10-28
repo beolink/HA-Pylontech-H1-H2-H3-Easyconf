@@ -13,7 +13,7 @@
       },
       "discover_none": {
         "title": "No battery found",
-        "description": "{loggers} Solarman loggers answered the search, and none had a Pylontech BMS behind it that is not set up already. Next you can enter an address by hand: that of the battery's Wi-Fi or LAN module, or of a converter on its RS485 port."
+        "description": "{loggers} Solarman loggers answered the search and {gateways} other addresses took a connection on Modbus's ports 8899 and 502, and none had a Pylontech BMS behind it that is not set up already. Next you can enter an address by hand: that of the battery's Wi-Fi or LAN module, or of a converter on its RS485 port."
       },
       "pick": {
         "title": "Batteries found",

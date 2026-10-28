@@ -56,3 +56,35 @@ def test_scan_collects_each_logger_once():
     found, greetings = asyncio.run(go())
     assert [f.serial for f in found] == [1111111111, 2222222222]
     assert set(greetings) == set(discovery.GREETINGS)
+
+
+def test_scan_hosts_covers_the_home_networks_and_leaves_out_ha_itself():
+    hosts = discovery.scan_hosts([("192.168.1.36", 24), ("100.71.186.88", 32), ("127.0.0.1", 8)])
+    assert len(hosts) == 253
+    assert "192.168.1.36" not in hosts
+    assert hosts[0] == "192.168.1.1" and hosts[-1] == "192.168.1.254"
+
+
+def test_scan_hosts_skips_networks_too_large_to_scan():
+    assert len(discovery.scan_hosts([("10.0.50.140", 23)])) == 509
+    assert discovery.scan_hosts([("10.0.0.5", 21)]) == []
+    assert discovery.scan_hosts([("8.8.8.8", 24)]) == []
+
+
+def test_tcp_scan_finds_the_ports_that_take_a_connection():
+    async def go():
+        server = await asyncio.start_server(lambda r, w: w.close(), "127.0.0.1", 0)
+        open_port = server.sockets[0].getsockname()[1]
+        closed = await asyncio.start_server(lambda r, w: w.close(), "127.0.0.1", 0)
+        closed_port = closed.sockets[0].getsockname()[1]
+        closed.close()
+        await closed.wait_closed()
+        try:
+            return open_port, await discovery.tcp_scan(["127.0.0.1"], (open_port, closed_port),
+                                                       timeout=0.5)
+        finally:
+            server.close()
+            await server.wait_closed()
+
+    open_port, found = asyncio.run(go())
+    assert found == [("127.0.0.1", open_port)]

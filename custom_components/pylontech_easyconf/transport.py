@@ -65,11 +65,14 @@ class Transport:
     kind = ""
 
     def __init__(self, host: str, port: int, slave: int = 1,
-                 timeout: float = DEFAULT_TIMEOUT) -> None:
+                 timeout: float = DEFAULT_TIMEOUT, attempts: int = ATTEMPTS) -> None:
         self.host = host
         self.port = port
         self.slave = slave
         self.timeout = timeout
+        #: Tries per chunk: ATTEMPTS while polling, 1 when probing an address,
+        #: where a device that speaks something else should cost one wait.
+        self.attempts = attempts
         self._reader: asyncio.StreamReader | None = None
         self._writer: asyncio.StreamWriter | None = None
         self._lock = asyncio.Lock()
@@ -127,7 +130,7 @@ class Transport:
         return values
 
     async def _read_chunk(self, start: int, size: int) -> list[int]:
-        for attempt in range(1, ATTEMPTS + 1):
+        for attempt in range(1, self.attempts + 1):
             if attempt > 1:
                 await asyncio.sleep(random.uniform(*RETRY_PAUSE) * (attempt - 1))
             self.requests += 1
@@ -150,7 +153,7 @@ class Transport:
                 self.failures += 1
                 self.last_error = f"{start:#06x}: {err!r}"
                 await self.close()
-                if attempt < ATTEMPTS:
+                if attempt < self.attempts:
                     self.retries += 1
                     continue
                 raise TransportError(
@@ -195,8 +198,9 @@ class SolarmanV5Transport(Transport):
 
     def __init__(self, host: str, port: int = solarman_v5.DEFAULT_PORT, slave: int = 1,
                  serial: int = 0, timeout: float = DEFAULT_TIMEOUT,
-                 on_serial: Callable[[int], None] | None = None) -> None:
-        super().__init__(host, port, slave, timeout)
+                 on_serial: Callable[[int], None] | None = None,
+                 attempts: int = ATTEMPTS) -> None:
+        super().__init__(host, port, slave, timeout, attempts)
         #: The logger's serial number, 0 until it is known.
         self.serial = serial
         self._on_serial = on_serial
@@ -273,8 +277,8 @@ class ModbusTcpTransport(Transport):
     kind = MODBUS_TCP
 
     def __init__(self, host: str, port: int = 502, slave: int = 1,
-                 timeout: float = DEFAULT_TIMEOUT) -> None:
-        super().__init__(host, port, slave, timeout)
+                 timeout: float = DEFAULT_TIMEOUT, attempts: int = ATTEMPTS) -> None:
+        super().__init__(host, port, slave, timeout, attempts)
         self._transaction = random.randrange(1, 0xFFFF)
 
     async def _read(self, address: int, count: int) -> list[int]:
@@ -308,13 +312,14 @@ class RtuOverTcpTransport(Transport):
 
 def make_transport(kind: str, host: str, port: int | None = None, slave: int = 1,
                    serial: int = 0, timeout: float = DEFAULT_TIMEOUT,
-                   on_serial: Callable[[int], None] | None = None) -> Transport:
+                   on_serial: Callable[[int], None] | None = None,
+                   attempts: int = ATTEMPTS) -> Transport:
     """The transport of the given kind."""
     port = port or DEFAULT_PORTS[kind]
     if kind == SOLARMAN_V5:
-        return SolarmanV5Transport(host, port, slave, serial, timeout, on_serial)
+        return SolarmanV5Transport(host, port, slave, serial, timeout, on_serial, attempts)
     if kind == MODBUS_TCP:
-        return ModbusTcpTransport(host, port, slave, timeout)
+        return ModbusTcpTransport(host, port, slave, timeout, attempts)
     if kind == RTU_OVER_TCP:
-        return RtuOverTcpTransport(host, port, slave, timeout)
+        return RtuOverTcpTransport(host, port, slave, timeout, attempts)
     raise ValueError(f"unknown transport {kind!r}")

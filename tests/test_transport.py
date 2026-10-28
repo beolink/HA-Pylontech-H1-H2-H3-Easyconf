@@ -278,6 +278,24 @@ def test_probe_of_a_logger_whose_battery_is_off():
     assert err.value.reason == "no_battery"
 
 
+def test_a_modbus_tcp_gateway_is_found_after_solarman_fails():
+    # An Elfin module answers Modbus TCP on 8899 and nothing sensible to a
+    # Solarman V5 frame: DHCP's order (V5, then Modbus TCP on 502 and on 8899)
+    # must still find the battery, and each protocol is asked only once.
+    battery = FakeBattery(h2.bank(), kind="modbus_tcp")
+
+    async def go():
+        async with FakeServer(battery) as server:
+            order = [("solarman_v5", server.port), ("modbus_tcp", 1), ("modbus_tcp", server.port)]
+            return await reader.probe("127.0.0.1", timeout=0.4, order=order), server
+
+    result, server = run(go())
+    assert (result.kind, result.serial) == ("modbus_tcp", 0)
+    assert result.identity.model == "Force H2"
+    # The V5 try, then the Modbus TCP one: no retries while probing.
+    assert server.connections == 2
+
+
 def test_auto_attempt_order():
     assert reader.attempts("auto", None)[0] == ("solarman_v5", 8899)
     assert reader.attempts("auto", 502)[0] == ("modbus_tcp", 502)
