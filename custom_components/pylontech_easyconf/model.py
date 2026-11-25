@@ -71,6 +71,8 @@ class Extreme:
     module: int | None = None
     #: 1-based cell number within the module.
     cell: int | None = None
+    #: 1-based parallel tower number (on a multi-tower 0x1100 summary), or None.
+    tower: int | None = None
 
 
 @dataclass

@@ -88,6 +88,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: PylontechConfigEntry) ->
     return True
 
 
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: PylontechConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Allow deleting stale devices from the UI."""
+    coordinator = getattr(entry, "runtime_data", None)
+    return not (
+        isinstance(coordinator, PylontechCoordinator)
+        and device_entry.id == coordinator.stack_device_id
+    )
+
+
 async def async_unload_entry(hass: HomeAssistant, entry: PylontechConfigEntry) -> bool:
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:

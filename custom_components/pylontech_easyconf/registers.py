@@ -53,7 +53,9 @@ from .model import Cell, Extreme, Identity, Module, Snapshot
 
 IDENTITY_START = 0x1000
 IDENTITY_COUNT = 16
-SUMMARY_STARTS = (0x1100, 0x1400)
+SUMMARY_STARTS = (0x1400, 0x1100)
+SYSTEM_SUMMARY_START = 0x1100
+TOWER_SUMMARY_START = 0x1400
 SUMMARY_COUNT = 64
 SERIAL_START = 0x1450
 SERIAL_COUNT = 8
@@ -147,16 +149,29 @@ def counts(summary: list[int]) -> tuple[int, int]:
     return modules, cells
 
 
+def _split_parallel_index(index: int) -> tuple[int | None, int]:
+    """Split a parallel 0x1100 index encoded as ``tower * 1000 + local_index``."""
+    if index >= 1000:
+        return index // 1000, index % 1000
+    return None, index
+
+
 def _locate_cell(index: int, cells_per_module: int | None) -> Extreme:
+    tower, local = _split_parallel_index(index)
     if not cells_per_module:
-        return Extreme(None, None, index + 1)
-    return Extreme(None, index // cells_per_module + 1, index % cells_per_module + 1)
+        return Extreme(None, None, local + 1, tower)
+    return Extreme(None, local // cells_per_module + 1, local % cells_per_module + 1, tower)
 
 
 def _extreme_cell(value: float, index: int, cells_per_module: int | None) -> Extreme:
     where = _locate_cell(index, cells_per_module)
     where.value = value
     return where
+
+
+def _extreme_module(value: float, index: int) -> Extreme:
+    tower, local = _split_parallel_index(index)
+    return Extreme(value, local + 1, None, tower)
 
 
 def decode(
@@ -202,10 +217,10 @@ def decode(
         cell_voltage_min=_extreme_cell(w[0x11] / 1000, w[0x13], cpm),
         cell_temperature_max=_extreme_cell(signed(w[0x14]) / 10, w[0x16], cpm),
         cell_temperature_min=_extreme_cell(signed(w[0x15]) / 10, w[0x17], cpm),
-        module_voltage_max=Extreme(w[0x18] / 100, w[0x1A] + 1),
-        module_voltage_min=Extreme(w[0x19] / 100, w[0x1B] + 1),
-        module_temperature_max=Extreme(signed(w[0x1C]) / 10, w[0x1E] + 1),
-        module_temperature_min=Extreme(signed(w[0x1D]) / 10, w[0x1F] + 1),
+        module_voltage_max=_extreme_module(w[0x18] / 100, w[0x1A]),
+        module_voltage_min=_extreme_module(w[0x19] / 100, w[0x1B]),
+        module_temperature_max=_extreme_module(signed(w[0x1C]) / 10, w[0x1E]),
+        module_temperature_min=_extreme_module(signed(w[0x1D]) / 10, w[0x1F]),
         fully_charged=bool(w[0x38]),
         module_count=modules_in_series,
         cell_count=cells_in_series,

@@ -218,3 +218,29 @@ def test_a_real_force_h2_of_five_modules():
     assert (s.cell_temperature_min.value, s.cell_temperature_min.module,
             s.cell_temperature_min.cell) == (pytest.approx(12.0), 1, 8)
     assert s.remaining_energy_kwh == pytest.approx(13.678)
+
+
+def test_parallel_system_summary_decodes_tower_indices():
+    # Parallel 0x1100 summary encodes extreme indices as tower * 1000 + local_index.
+    summary = list(h3.SUMMARY)
+    summary[0x12] = 3160  # tower 3, cell 160 -> module 6, cell 1 (32 cells/module)
+    summary[0x13] = 1143  # tower 1, cell 143 -> module 5, cell 16
+    summary[0x16] = 2032  # tower 2, cell 32 -> module 2, cell 1
+    summary[0x17] = 1000  # tower 1, cell 0 -> module 1, cell 1
+    summary[0x1A] = 3005  # tower 3, module 6
+    summary[0x1B] = 2000  # tower 2, module 1
+    summary[0x1E] = 1005  # tower 1, module 6
+    summary[0x1F] = 3002  # tower 3, module 3
+    s = registers.decode(summary)
+    assert (s.cell_voltage_max.tower, s.cell_voltage_max.module, s.cell_voltage_max.cell) == (
+        3, 6, 1)
+    assert (s.cell_voltage_min.tower, s.cell_voltage_min.module, s.cell_voltage_min.cell) == (
+        1, 5, 16)
+    assert (s.cell_temperature_max.tower, s.cell_temperature_max.module,
+            s.cell_temperature_max.cell) == (2, 2, 1)
+    assert (s.cell_temperature_min.tower, s.cell_temperature_min.module,
+            s.cell_temperature_min.cell) == (1, 1, 1)
+    assert (s.module_voltage_max.tower, s.module_voltage_max.module) == (3, 6)
+    assert (s.module_voltage_min.tower, s.module_voltage_min.module) == (2, 1)
+    assert (s.module_temperature_max.tower, s.module_temperature_max.module) == (1, 6)
+    assert (s.module_temperature_min.tower, s.module_temperature_min.module) == (3, 3)

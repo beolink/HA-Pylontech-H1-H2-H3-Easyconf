@@ -65,6 +65,7 @@ from .const import (
     CONF_SLAVE,
     CONF_SOURCE,
     CONF_STATION_NAME,
+    CONF_SYSTEM_ONLY,
     CONF_TRANSPORT,
     DEFAULT_CLOUD_INTERVAL,
     DEFAULT_LOCAL_INTERVAL,
@@ -88,19 +89,22 @@ PROBE_TIMEOUT = 4.0
 MAX_PROBED = 32
 
 
-def _unique_id(result: ProbeResult, host: str, port: int) -> str:
+def _unique_id(result: ProbeResult, host: str, port: int, system_only: bool = False) -> str:
     if result.identity.serial:
-        return result.identity.serial
-    if result.serial:
-        return f"logger-{result.serial}"
-    return f"{host}:{port}"
+        base = result.identity.serial
+    elif result.serial:
+        base = f"logger-{result.serial}"
+    else:
+        base = f"{host}:{port}"
+    return f"{base}_system" if system_only else base
 
 
 def _title(model: str | None, suffix: str = "") -> str:
     return f"Pylontech {model or 'Force'}{suffix}"
 
 
-def _local_data(result: ProbeResult, host: str, slave: int, mac: str | None = None) -> dict:
+def _local_data(result: ProbeResult, host: str, slave: int, mac: str | None = None,
+                system_only: bool = False) -> dict:
     data: dict[str, Any] = {
         CONF_SOURCE: SOURCE_LOCAL,
         CONF_HOST: host,
@@ -112,6 +116,8 @@ def _local_data(result: ProbeResult, host: str, slave: int, mac: str | None = No
         data[CONF_LOGGER_SERIAL] = result.serial
     if mac:
         data[CONF_MAC] = mac
+    if system_only:
+        data[CONF_SYSTEM_ONLY] = True
     return data
 
 
@@ -142,6 +148,9 @@ def _manual_schema(current: dict[str, Any], with_stats: bool = True) -> vol.Sche
         vol.Required(CONF_SLAVE, default=current.get(CONF_SLAVE, DEFAULT_SLAVE)): _number(1, 247),
     }
     if with_stats:
+        fields[
+            vol.Optional(CONF_SYSTEM_ONLY, default=bool(current.get(CONF_SYSTEM_ONLY, False)))
+        ] = bool
         fields.update(_stats_field())
     return vol.Schema(fields)
 
@@ -294,17 +303,46 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
         serial_text = str(user_input.get(CONF_LOGGER_SERIAL) or "").strip()
         if serial_text and not serial_text.isdigit():
             return None, "invalid_serial"
+        host = user_input[CONF_HOST].strip()
+        port = int(user_input[CONF_PORT])
+        kind = user_input[CONF_TRANSPORT]
+        slave = int(user_input[CONF_SLAVE])
+        # Solarman loggers typically allow only one TCP client at a time. When
+        # adding a companion entry (e.g. combined System) for an already-running
+        # endpoint, reuse its active coordinator/identity instead of opening a
+        # competing connection.
+        for entry in self._async_current_entries(include_ignore=False):
+            if (
+                entry.data.get(CONF_SOURCE) == SOURCE_LOCAL
+                and entry.data.get(CONF_HOST) == host
+                and int(entry.data.get(CONF_PORT) or 0) == port
+                and int(entry.data.get(CONF_SLAVE, DEFAULT_SLAVE)) == slave
+                and (kind == AUTO or entry.data.get(CONF_TRANSPORT) == kind)
+            ):
+                coordinator = getattr(entry, "runtime_data", None)
+                if coordinator is not None and getattr(coordinator, "identity", None) is not None:
+                    identity = coordinator.identity
+                    if identity.brand or identity.model or identity.serial:
+                        learned = int(
+                            entry.data.get(CONF_LOGGER_SERIAL)
+                            or getattr(coordinator.transport, "serial", 0)
+                            or 0
+                        )
+                        return (
+                            ProbeResult(entry.data[CONF_TRANSPORT], port, learned, identity),
+                            None,
+                        )
         try:
             result = await reader.probe(
-                user_input[CONF_HOST].strip(),
-                int(user_input[CONF_PORT]),
-                user_input[CONF_TRANSPORT],
+                host,
+                port,
+                kind,
                 int(serial_text or 0),
-                int(user_input[CONF_SLAVE]),
+                slave,
                 timeout=PROBE_TIMEOUT,
             )
         except ProbeError as err:
-            _LOGGER.debug("Probe of %s failed: %s", user_input[CONF_HOST], err)
+            _LOGGER.debug("Probe of %s failed: %s", host, err)
             return None, err.reason
         return result, None
 
@@ -315,13 +353,17 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
             result, error = await self._probe_form(user_input)
             if result is not None:
                 host = user_input[CONF_HOST].strip()
+                system_only = bool(user_input.get(CONF_SYSTEM_ONLY, False))
                 await self.async_set_unique_id(
-                    _unique_id(result, host, result.port), raise_on_progress=False
+                    _unique_id(result, host, result.port, system_only=system_only),
+                    raise_on_progress=False,
                 )
                 self._abort_if_unique_id_configured(updates={CONF_HOST: host})
                 return self.async_create_entry(
-                    title=_title(result.identity.model),
-                    data=_local_data(result, host, int(user_input[CONF_SLAVE])),
+                    title=_title(result.identity.model, " System" if system_only else ""),
+                    data=_local_data(
+                        result, host, int(user_input[CONF_SLAVE]), system_only=system_only
+                    ),
                     options={CONF_SEND_STATISTICS: user_input.get(CONF_SEND_STATISTICS, True)},
                 )
             errors["base"] = error or "cannot_connect"
@@ -520,9 +562,17 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
             result, error = await self._probe_form(user_input)
             if result is not None:
                 host = user_input[CONF_HOST].strip()
-                await self.async_set_unique_id(_unique_id(result, host, result.port))
+                system_only = bool(entry.data.get(CONF_SYSTEM_ONLY, False))
+                await self.async_set_unique_id(
+                    _unique_id(result, host, result.port, system_only=system_only)
+                )
                 self._abort_if_unique_id_mismatch(reason="another_battery")
-                data = {**entry.data, **_local_data(result, host, int(user_input[CONF_SLAVE]))}
+                data = {
+                    **entry.data,
+                    **_local_data(
+                        result, host, int(user_input[CONF_SLAVE]), system_only=system_only
+                    ),
+                }
                 return self.async_update_reload_and_abort(entry, data=data)
             errors["base"] = error or "cannot_connect"
         return self.async_show_form(
