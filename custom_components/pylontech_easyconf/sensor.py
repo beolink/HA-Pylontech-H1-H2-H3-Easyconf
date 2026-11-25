@@ -58,7 +58,11 @@ FROM_CELLS_UNIQUE_ID = re.compile(r"_m\d+_cell_voltage_(max|min|spread)$")
 def _where(extreme: Extreme | None) -> dict[str, Any]:
     if extreme is None:
         return {}
-    return {k: v for k, v in (("module", extreme.module), ("cell", extreme.cell)) if v}
+    return {
+        k: v
+        for k, v in (("tower", extreme.tower), ("module", extreme.module), ("cell", extreme.cell))
+        if v
+    }
 
 
 def _value(extreme: Extreme | None) -> float | None:
@@ -435,7 +439,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: PylontechConfigEntry,
                             async_add_entities: AddConfigEntryEntitiesCallback) -> None:
     coordinator = entry.runtime_data
     known: set[str] = set()
-    if not coordinator.cell_data and not coordinator.is_cloud:
+    if coordinator.system_only:
+        registry = er.async_get(hass)
+        for item in er.async_entries_for_config_entry(registry, entry.entry_id):
+            if item.domain == "sensor" and item.unique_id.endswith(("_bms_temperature", "_cycles")):
+                registry.async_remove(item.entity_id)
+    elif not coordinator.cell_data and not coordinator.is_cloud:
         # Cell data switched off in the options: the cells' entities go, rather
         # than staying on as unknown.
         registry = er.async_get(hass)

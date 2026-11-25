@@ -30,13 +30,13 @@ def test_every_transport_reads_the_whole_stack(kind):
     battery = FakeBattery(h2.bank(), kind=kind)
     reading, t, server = run(_read(battery, serial=battery.serial))
     s = reading.snapshot
-    assert reading.summary_start == 0x1100
+    assert reading.summary_start == 0x1400
     assert s.soc == 33 and s.cycles == 679
     assert [len(m.cells) for m in s.modules] == [30, 30]
     assert s.modules[1].cells[0].temperature == pytest.approx(28.0)
     # Summary in two chunks, one request per module block, two per cell block.
     assert battery.requests == [
-        (0x1100, 32), (0x1120, 32), (0x1460, 2), (0x14B0, 2),
+        (0x1400, 32), (0x1420, 32), (0x1460, 2), (0x14B0, 2),
         (0x1500, 32), (0x1520, 28), (0x1800, 32), (0x1820, 28),
     ]
     assert server.connections == 1
@@ -298,6 +298,33 @@ def test_a_modbus_tcp_gateway_is_found_after_solarman_fails():
 
 def test_auto_attempt_order():
     assert reader.attempts("auto", None)[0] == ("solarman_v5", 8899)
+
+
+def test_read_snapshot_system_only_uses_0x1100_and_scales_parallel_counts():
+    bank = h3.bank()
+    for offset, word in enumerate(h3.SUMMARY):
+        bank[0x1100 + offset] = word
+    # Mark 3 parallel towers in 0x1131 (offset 0x31) and give 0x1100 distinct SoC from 0x1400.
+    bank[0x1107] = 42
+    bank[0x1131] = 3
+    bank[0x1407] = 83
+    battery = FakeBattery(bank, kind="modbus_tcp")
+
+    async def go():
+        async with FakeServer(battery) as server:
+            t = transport.make_transport("modbus_tcp", "127.0.0.1", server.port, timeout=1)
+            try:
+                tower = await reader.read_snapshot(t, cells=False, system_only=False)
+                system = await reader.read_snapshot(t, cells=False, system_only=True)
+                return tower, system
+            finally:
+                await t.close()
+
+    tower, system = run(go())
+    assert (tower.summary_start, tower.snapshot.soc, len(tower.snapshot.modules)) == (0x1400, 83, 3)
+    assert (system.summary_start, system.snapshot.soc, system.snapshot.modules) == (0x1100, 42, [])
+    assert (system.snapshot.module_count, system.snapshot.cell_count) == (9, 288)
+    assert (system.snapshot.bms_temperature, system.snapshot.cycles) == (None, None)
     assert reader.attempts("auto", 502)[0] == ("modbus_tcp", 502)
     assert reader.attempts("auto", 4196)[0] == ("rtu_over_tcp", 4196)
     assert reader.attempts("solarman_v5", None) == [("solarman_v5", 8899)]

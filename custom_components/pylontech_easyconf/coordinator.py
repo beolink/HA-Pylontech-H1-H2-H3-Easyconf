@@ -29,6 +29,7 @@ from .const import (
     CONF_SCAN_INTERVAL,
     CONF_SLAVE,
     CONF_SOURCE,
+    CONF_SYSTEM_ONLY,
     CONF_TRANSPORT,
     DEFAULT_CLOUD_INTERVAL,
     DEFAULT_LOCAL_INTERVAL,
@@ -46,6 +47,10 @@ from .transport import Transport, TransportError, make_transport
 _LOGGER = logging.getLogger(__name__)
 
 type PylontechConfigEntry = ConfigEntry[PylontechCoordinator]
+
+# Share one Transport (and its asyncio.Lock) when two entries poll the same
+# logger endpoint (e.g. Tower 1 and its combined System entry).
+_SHARED_TRANSPORTS: dict[tuple[str, str, int | None, int, int], list[Any]] = {}
 
 
 def entry_config(entry: ConfigEntry) -> dict[str, Any]:
@@ -69,6 +74,7 @@ class PylontechCoordinator(DataUpdateCoordinator[Snapshot]):
             update_interval=timedelta(seconds=interval),
         )
         self.cell_data = bool(config.get(CONF_CELL_DATA, True))
+        self.system_only = bool(config.get(CONF_SYSTEM_ONLY, False))
         self.identity = Identity()
         self._identity_read: datetime | None = None
         self.failures_in_row = 0
@@ -76,6 +82,7 @@ class PylontechCoordinator(DataUpdateCoordinator[Snapshot]):
         self.last_error: str | None = None
         self.last_success: datetime | None = None
         self._summary_start: int | None = None
+        self._transport_key: tuple[str, str, int | None, int, int] | None = None
         self.transport: Transport | None = None
         self.cloud: SolarmanCloud | None = None
         #: The stack's device, which the modules' devices sit under.
@@ -95,14 +102,24 @@ class PylontechCoordinator(DataUpdateCoordinator[Snapshot]):
                 serial=config.get(CONF_DEVICE_SN),
             )
         else:
-            self.transport = make_transport(
+            key = (
                 config[CONF_TRANSPORT],
                 config[CONF_HOST],
                 config.get(CONF_PORT),
                 int(config.get(CONF_SLAVE, DEFAULT_SLAVE)),
                 int(config.get(CONF_LOGGER_SERIAL) or 0),
-                on_serial=self._learned_serial,
             )
+            self._transport_key = key
+            shared = _SHARED_TRANSPORTS.get(key)
+            if shared is not None:
+                shared[1] += 1
+                self.transport = shared[0]
+            else:
+                self.transport = make_transport(
+                    key[0], key[1], key[2], key[3], key[4],
+                    on_serial=self._learned_serial,
+                )
+                _SHARED_TRANSPORTS[key] = [self.transport, 1]
 
     @callback
     def _learned_serial(self, serial: int) -> None:
@@ -136,7 +153,9 @@ class PylontechCoordinator(DataUpdateCoordinator[Snapshot]):
         assert self.transport is not None
         if self._identity_read is None or dt_util.utcnow() - self._identity_read > IDENTITY_REFRESH:
             await self._read_identity(required=False)
-        reading = await reader.read_snapshot(self.transport, self._summary_start, self.cell_data)
+        reading = await reader.read_snapshot(
+            self.transport, self._summary_start, self.cell_data, system_only=self.system_only
+        )
         self._summary_start = reading.summary_start
         return reading.snapshot
 
@@ -163,6 +182,12 @@ class PylontechCoordinator(DataUpdateCoordinator[Snapshot]):
     async def async_shutdown(self) -> None:
         await super().async_shutdown()
         if self.transport is not None:
+            key = self._transport_key
+            if key is not None and key in _SHARED_TRANSPORTS:
+                _SHARED_TRANSPORTS[key][1] -= 1
+                if _SHARED_TRANSPORTS[key][1] > 0:
+                    return
+                del _SHARED_TRANSPORTS[key]
             await self.transport.close()
 
     def describe(self) -> dict[str, Any]:

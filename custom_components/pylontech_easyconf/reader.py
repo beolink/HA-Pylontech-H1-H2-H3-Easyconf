@@ -61,14 +61,30 @@ async def _optional(transport: Transport, start: int, count: int) -> list[int] |
 
 
 async def read_snapshot(transport: Transport, summary_start: int | None = None,
-                        cells: bool = True) -> Reading:
+                        cells: bool = True, system_only: bool = False) -> Reading:
     """One whole reading of the stack.
 
     ``summary_start`` is where the summary block answered last time; the
     other mirror is tried when the BMS does not have it. ``cells`` False
     leaves the two cell blocks out, which on a large Force H3 string is most
-    of the requests of a poll.
+    of the requests of a poll. ``system_only`` reads only the combined
+    multi-tower summary block (0x1100) with no module or cell blocks.
     """
+    if system_only:
+        summary = await transport.read_registers(
+            registers.SYSTEM_SUMMARY_START, registers.SUMMARY_COUNT
+        )
+        snapshot = registers.decode(summary, None, None, None, None)
+        parallel_towers = summary[0x31] if len(summary) > 0x31 and summary[0x31] > 1 else 1
+        if snapshot.module_count is not None:
+            snapshot.module_count *= parallel_towers
+        if snapshot.cell_count is not None:
+            snapshot.cell_count *= parallel_towers
+        snapshot.bms_temperature = None
+        snapshot.cycles = None
+        snapshot.modules = []
+        return Reading(snapshot, registers.SYSTEM_SUMMARY_START)
+
     starts: Sequence[int] = registers.SUMMARY_STARTS
     if summary_start in starts:
         starts = [summary_start, *[s for s in starts if s != summary_start]]

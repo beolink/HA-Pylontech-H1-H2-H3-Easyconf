@@ -31,6 +31,14 @@ def stack_device(coordinator: PylontechCoordinator) -> DeviceInfo:
     entry = coordinator.config_entry
     assert entry is not None
     model = identity.model or "Force"
+    if coordinator.system_only:
+        return DeviceInfo(
+            identifiers={(DOMAIN, base_id(coordinator))},
+            manufacturer=MANUFACTURER,
+            name=f"{MANUFACTURER} {model} System",
+            model=f"{model} System",
+            sw_version=identity.firmware,
+        )
     info = DeviceInfo(
         identifiers={(DOMAIN, base_id(coordinator))},
         manufacturer=MANUFACTURER,

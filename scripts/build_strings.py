@@ -221,8 +221,24 @@ def config(lang: str) -> dict:
                     "(Force H3), som svarar på port 8899. En omvandlare på BMS:ens RS485-port svarar "
                     "på sin egen port."
                 ),
-                "data": {**MANUAL_DATA[lang], **stats_data},
-                "data_description": {**MANUAL_HELP[lang], **stats},
+                "data": {
+                    **MANUAL_DATA[lang],
+                    "system_only": (
+                        "Combined parallel system only (no modules)" if en
+                        else "Endast sammanslaget parallellsystem (inga moduler)"
+                    ),
+                    **stats_data,
+                },
+                "data_description": {
+                    **MANUAL_HELP[lang],
+                    "system_only": (
+                        "Read only the combined multi-tower summary (0x1100) from the master BMS "
+                        "as its own device, without module or cell entities." if en else
+                        "Läs endast den sammanslagna flertornsöversikten (0x1100) från "
+                        "master-BMS:en som en egen enhet, utan modul- eller cellentiteter."
+                    ),
+                    **stats,
+                },
             },
             "dhcp_confirm": {
                 "title": "{name}",
