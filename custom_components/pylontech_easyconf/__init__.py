@@ -16,7 +16,15 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.loader import async_get_integration
 
-from .const import CONF_CELL_DATA, CONF_SOURCE, CONF_TRANSPORT, DOMAIN, SOURCE_CLOUD
+from .const import (
+    CONF_CELL_DATA,
+    CONF_DASHBOARD,
+    CONF_SOURCE,
+    CONF_TRANSPORT,
+    DASHBOARD_PENDING,
+    DOMAIN,
+    SOURCE_CLOUD,
+)
 from .coordinator import PylontechConfigEntry, PylontechCoordinator, entry_config
 from .entity import stack_device
 from .stats import async_setup_stats, async_stop_stats
@@ -85,6 +93,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: PylontechConfigEntry) ->
     )
     coordinator.stack_device_id = device.id
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    if entry.entry_id in hass.data.get(DASHBOARD_PENDING, ()):
+        # The options were just saved (config_flow.py): the dashboard is built
+        # now that the entities are what the new options make them. Imported
+        # here, so a house without the dashboard never loads it.
+        from . import dashboard
+
+        await dashboard.async_apply_pending(hass, entry.entry_id)
     return True
 
 
@@ -96,3 +111,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: PylontechConfigEntry) -
         # set-up attempt fails, and the report has to survive that.
         await async_stop_stats(hass, entry, DOMAIN)
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: PylontechConfigEntry) -> None:
+    _FAILURES.pop(entry.entry_id, None)
+    hass.data.get(DASHBOARD_PENDING, set()).discard(entry.entry_id)
+    if entry.options.get(CONF_DASHBOARD):
+        # Off the dashboard with it, and the dashboard too if it was the last.
+        from . import dashboard
+
+        await dashboard.async_apply_safely(hass, exclude=entry.entry_id)

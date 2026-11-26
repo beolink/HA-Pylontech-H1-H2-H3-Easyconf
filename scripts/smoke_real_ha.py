@@ -91,6 +91,16 @@ async def boot(config_dir: str):
     assert await bootstrap.async_load_base_functionality(hass)
     hass.auth = await ha_auth.auth_manager_from_config(hass, [{"type": "homeassistant"}], [])
     assert await async_setup_component(hass, "homeassistant", {})
+    # What the dashboard needs of a house: Lovelace, which brings the HTTP
+    # server's configuration with it (nothing listens, Home Assistant is never
+    # started here), and the notifications.
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        free = probe.getsockname()[1]
+    assert await async_setup_component(
+        hass, "http", {"http": {"server_host": ["127.0.0.1"], "server_port": free}})
+    assert await async_setup_component(hass, "lovelace", {})
+    assert await async_setup_component(hass, "persistent_notification", {})
     return hass
 
 
@@ -281,14 +291,95 @@ async def run(hass, failures: list[str]) -> None:
         assert not [r for r in battery.requests[-6:] if r[0] >= 0x1500]
         ok("options: interval 15 s, cell data off, the cells' entities removed")
 
-        # 4. The diagnostics.
+        # 3b. The dashboard: ticked in the options, built by the set-up that
+        # follows the reload, built again by saving the dialog, a person's own
+        # tab kept, and gone with the battery.
+        from homeassistant.components import persistent_notification
+
+        from custom_components.pylontech_easyconf import dashboard, dashboard_views
+
+        boards = dashboard._dashboards(hass)
+        assert boards is not None and dashboard_views.URL_PATH not in boards
+
+        async def save_options(**changes) -> None:
+            form = await hass.config_entries.options.async_init(entry.entry_id)
+            assert "dashboard" in form["data_schema"].schema, form["data_schema"].schema
+            done = await hass.config_entries.options.async_configure(form["flow_id"], {
+                "scan_interval": 15, "cell_data": False, "dashboard": True,
+                "send_statistics": False, **changes,
+            })
+            assert kind(done) == "create_entry", done
+            await hass.async_block_till_done()
+            assert entry.state is ConfigEntryState.LOADED
+
+        async def tabs() -> list[str]:
+            return [v.get("path") for v in (await board.async_load(False))["views"]]
+
+        await save_options()
+        board = boards[dashboard_views.URL_PATH]
+        assert board.mode == "storage"
+        assert await tabs() == ["overview", "modules"]  # cell data is off
+        built = await board.async_load(False)
+        status = built["views"][0]["sections"][0]["cards"]
+        assert status[0]["heading"] == "Pylontech Force H2", status[0]
+        assert status[1]["entity"] == entity_id("sensor", f"{s}_soc"), status[1]
+        assert status[1]["name"] == "State of charge", status[1]
+        assert status[2] == {"type": "tile", "entity": entity_id("sensor", f"{s}_state"),
+                             "name": "State", "grid_options": {"columns": 6}}, status[2]
+        module = built["views"][1]["sections"][1]["cards"]
+        assert module[0]["heading"] == "Force H2 module 1", module[0]
+        assert module[1]["entity"] == entity_id("sensor", f"{s}_m1_voltage"), module[1]
+        notes = persistent_notification._async_get_or_create_notifications(hass)
+        assert "1 battery" in notes[dashboard.NOTIFICATION_ID]["message"], notes
+        # Settings > Dashboards has it, under an id of the collection's choosing.
+        assert dashboard._item_id(dashboard._collection(hass)), "not in the collection"
+
+        # A tab of the owner's own, and a generated tab changed by hand.
+        built["views"].append({"title": "Mine", "path": "mine", "cards": []})
+        built["views"][0]["sections"] = []
+        await board.async_save(built)
+        await save_options()  # nothing changed: no reload, built at once
+        assert await tabs() == ["overview", "modules", "mine"]
+        assert len((await board.async_load(False))["views"][0]["sections"]) == 3
+        await save_options(cell_data=True)  # a reload, and the cells with it
+        assert await tabs() == ["overview", "modules", "cells", "mine"]
+        cells = (await board.async_load(False))["views"][2]["sections"]
+        assert len(cells) == 2 and len(cells[0]["cards"][1]["entities"]) == 30, cells[0]
+        assert cells[0]["cards"][1]["entities"][0] == {
+            "entity": entity_id("sensor", f"{s}_m1_cell_1_voltage"), "name": "1"}
+
+        await save_options(cell_data=True, dashboard=False)  # off: the owner's tab stays
+        assert await tabs() == ["mine"]
+        assert "tabs you added" in notes[dashboard.NOTIFICATION_ID]["message"]
+        await save_options()  # on again, cell data off as before
+        assert await tabs() == ["overview", "modules", "mine"]
+        mine = await board.async_load(False)
+        mine["views"] = [v for v in mine["views"] if v.get("path") != "mine"]
+        await board.async_save(mine)
+        ok("dashboard: built when ticked, rebuilt by saving, cells with cell data, "
+           "the owner's own tab kept")
+
+        # 4. The diagnostics, after a poll that failed: its error text names
+        # the address, which the file must not.
+        coordinator = entry.runtime_data
+        coordinator.transport.timeout = 0.5
+        battery.silent = True
+        await coordinator.async_refresh()
+        battery.silent = False
+        assert "127.0.0.1" in coordinator.last_error, coordinator.last_error
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
         diag = await async_get_config_entry_diagnostics(hass, entry)
         text = json.dumps(diag, default=str)
         assert "127.0.0.1" not in text
         assert h2.SERIAL not in text and str(battery.serial) not in text
         assert diag["reading"]["soc"] == 33
         assert diag["connection"]["transport"]["kind"] == "solarman_v5"
-        ok("diagnostics: the reading and the connection, no address and no serial")
+        assert "REDACTED" in diag["connection"]["last_error"], diag["connection"]
+        assert diag["summary_blocks"]["0x1100"] == diag["reading"]["raw"]["summary"]
+        assert len(diag["summary_blocks"]["0x1400"]) == 64
+        ok("diagnostics: the reading, the connection and both summary blocks, no address "
+           "and no serial")
 
         # 5. Reconfigure, and the same battery again.
         result = await flow.async_init(DOMAIN, context={"source": "reconfigure",
@@ -322,6 +413,10 @@ async def run(hass, failures: list[str]) -> None:
         assert not er.async_entries_for_config_entry(ents, entry.entry_id)
         assert not dr.async_entries_for_config_entry(devs, entry.entry_id)
         ok("unloaded with the connection closed, removed with its devices and entities")
+        assert dashboard_views.URL_PATH not in boards, list(boards)
+        assert dashboard._item_id(dashboard._collection(hass)) is None
+        assert "removed" in notes[dashboard.NOTIFICATION_ID]["message"]
+        ok("dashboard: gone with its last battery")
 
     # 6. The network search, and DHCP. First the broadcast addresses Home
     # Assistant's network integration gives, unpatched.

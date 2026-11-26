@@ -10,6 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
@@ -122,12 +123,21 @@ class PylontechCoordinator(DataUpdateCoordinator[Snapshot]):
     async def _read_identity(self, required: bool) -> None:
         assert self.transport is not None
         try:
-            self.identity = await reader.read_identity(self.transport)
-            self._identity_read = dt_util.utcnow()
+            identity = await reader.read_identity(self.transport)
         except (TransportError, ModbusError, DecodeError) as err:
             if required:
                 raise UpdateFailed(f"Could not read the battery's identity: {err}") from err
             _LOGGER.debug("Identity not read again: %s", err)
+            return
+        changed = identity.firmware != self.identity.firmware
+        self.identity = identity
+        self._identity_read = dt_util.utcnow()
+        if changed and self.stack_device_id and identity.firmware:
+            # A BMS that got new firmware: the device page says so without a
+            # reload of the entry.
+            dr.async_get(self.hass).async_update_device(
+                self.stack_device_id, sw_version=identity.firmware
+            )
 
     async def _read(self) -> Snapshot:
         if self.cloud is not None:

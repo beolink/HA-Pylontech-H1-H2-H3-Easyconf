@@ -30,6 +30,10 @@ CONF_MODEL = "model"
 CONF_SCAN_INTERVAL = "scan_interval"
 CONF_CELL_DATA = "cell_data"
 CONF_SEND_STATISTICS = "send_statistics"
+#: Whether the battery is on the Pylontech dashboard (dashboard.py).
+CONF_DASHBOARD = "dashboard"
+#: In hass.data: the entries whose reload a dashboard build is waiting for.
+DASHBOARD_PENDING = f"{DOMAIN}_dashboard_pending"
 
 DEFAULT_SLAVE = 1
 DEFAULT_LOCAL_INTERVAL = 60

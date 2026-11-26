@@ -1,5 +1,33 @@
 # Changelog
 
+## [0.2.0] - 2026-11-26
+
+- **A dashboard for the battery.** Tick *Show the battery on the Pylontech
+  dashboard* under Configure and a dashboard named Pylontech appears in the
+  sidebar. Its overview has the state of charge as a gauge, power, energy
+  today and in total with the day's graphs, the cell balance and the BMS's
+  limits; a tab has every module, with all the modules' voltages and
+  temperatures in one graph each; and a tab has every cell's voltage as a
+  grid per module. It is made of the cards Home Assistant ships, so there is
+  nothing else to install. It is built again every time the dialog is saved
+  with the box ticked, and never by itself; tabs you added yourself are kept.
+  Unticked, the battery is taken off, and the dashboard goes with its last
+  battery. Several batteries share the one dashboard, and two of the same
+  name are told apart by the end of their serial numbers.
+- **Icons** for the state, the state of health, the cycles, the cell voltage
+  spread, *Fully charged* and the numbers of modules and cells, which had
+  Home Assistant's eye.
+- **The diagnostics file holds both summary blocks**, 0x1100 and 0x1400, read
+  as the file is made. On a single tower they hold the same values; on the
+  first of several towers in parallel one is the tower's own and the other
+  the whole system's, and the file now shows them side by side.
+- **No address in the diagnostics' error texts.** The message of a failed
+  connection names the battery's address and port, and the file's two "last
+  error" lines carried it; they leave it out now, as the rest of the file
+  does.
+- **New firmware shows on the device page** when the BMS's identity is read
+  again (every six hours), without a reload of the entry.
+
 ## [0.1.6] - 2026-11-26
 
 - **A day's energy total no longer sticks after one wrong reading.** A day's

@@ -133,11 +133,13 @@
         "data": {
           "scan_interval": "Sekunder mellan avläsningar",
           "cell_data": "Läs varje cell",
+          "dashboard": "Visa batteriet på dashboarden Pylontech",
           "send_statistics": "Skicka anonym användningsstatistik"
         },
         "data_description": {
           "scan_interval": "Lokalt minst 10 sekunder; molnet har nya data var femte minut.",
           "cell_data": "Varje cells spänning och temperatur. Avstängt läses modulerna och stapelns högsta och lägsta cell ändå, med betydligt färre frågor till loggaren.",
+          "dashboard": "Bygger en dashboard med namnet Pylontech i sidofältet: en översikt, modulerna och varje cell för de batterier som har rutan ikryssad. Den byggs om från batteriets nuvarande entiteter varje gång den här dialogen sparas med rutan ikryssad, så spara en gång till efter en ändring: en modul till, celldata av eller på, en entitet aktiverad eller omdöpt. Det du ändrat för hand på de tre genererade flikarna ersätts då; flikar du själv lagt till står kvar. Avkryssad tas batteriet bort från dashboarden, och dashboarden försvinner med sitt sista batteri om du inte lagt till egna flikar.",
           "send_statistics": "En rapport per dygn till {endpoint}: integrationens version, Home Assistants version och installationstyp, landet du angett i Home Assistant, en ungefärlig position avrundad till ungefär 11 km, batteriets familj (Force H1, H2 eller H3), hur det nås (wifi- eller LAN-modul, Modbus TCP, RS485-omvandlare eller Solarman-molnet), hur många moduler och celler per modul det har, dess firmware, om celldata läses och hur många avläsningar som misslyckats sedan förra rapporten. Inga mätvärden: ingen spänning, ingen laddning, ingen temperatur. Aldrig ett namn, en adress, en exakt position, ett serienummer eller ett entitetsnamn, och din IP-adress sparas inte. Dessutom skickas ett slumpat id som skapas vid installationen, så att dygnsrapporterna kan hållas isär och raderas på begäran (servern sparar det bara som en hash, och det säger inget om vem du är), en hash som knyter ihop beolinks tillägg på samma Home Assistant, hur många varningar och fel integrationen loggat sedan förra rapporten, och om den är igång eller väntar på att starta igen, aldrig själva meddelandena eller skälet. Stänger du av den slutar rapporteringen, och installationen märks som avanmäld. Det som redan skickats står kvar: det är anonymt, bär ingen fritext och lagras per dygn, och vilka anläggningar som funnits är det statistiken är till för. Radering på begäran, av den som driver tjänsten. Hela listan: {privacy_url}"
         }
       }

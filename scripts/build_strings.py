@@ -294,6 +294,10 @@ def options(lang: str) -> dict:
                 "data": {
                     "scan_interval": "Seconds between readings" if en else "Sekunder mellan avläsningar",
                     "cell_data": "Read every cell" if en else "Läs varje cell",
+                    "dashboard": (
+                        "Show the battery on the Pylontech dashboard" if en
+                        else "Visa batteriet på dashboarden Pylontech"
+                    ),
                     "send_statistics": STATS_LABEL[lang],
                 },
                 "data_description": {
@@ -308,6 +312,27 @@ def options(lang: str) -> dict:
                         if en else
                         "Varje cells spänning och temperatur. Avstängt läses modulerna och stapelns "
                         "högsta och lägsta cell ändå, med betydligt färre frågor till loggaren."
+                    ),
+                    "dashboard": (
+                        "Builds a dashboard named Pylontech in the sidebar: an overview, the "
+                        "modules and every cell of each battery that has this ticked. It is built "
+                        "again from the battery's current entities every time this dialog is saved "
+                        "with the box ticked, so save once more after a change: a module added, "
+                        "cell data switched on or off, an entity enabled or renamed. What you "
+                        "changed by hand on the three generated tabs is replaced then; tabs you "
+                        "added yourself are kept. Unticked, the battery is taken off the "
+                        "dashboard, and the dashboard goes with its last battery unless you added "
+                        "tabs of your own."
+                        if en else
+                        "Bygger en dashboard med namnet Pylontech i sidofältet: en översikt, "
+                        "modulerna och varje cell för de batterier som har rutan ikryssad. Den "
+                        "byggs om från batteriets nuvarande entiteter varje gång den här dialogen "
+                        "sparas med rutan ikryssad, så spara en gång till efter en ändring: en "
+                        "modul till, celldata av eller på, en entitet aktiverad eller omdöpt. Det "
+                        "du ändrat för hand på de tre genererade flikarna ersätts då; flikar du "
+                        "själv lagt till står kvar. Avkryssad tas batteriet bort från "
+                        "dashboarden, och dashboarden försvinner med sitt sista batteri om du "
+                        "inte lagt till egna flikar."
                     ),
                     "send_statistics": STATS[lang],
                 },

@@ -53,6 +53,7 @@ from .const import (
     CONF_APP_ID,
     CONF_APP_SECRET,
     CONF_CELL_DATA,
+    CONF_DASHBOARD,
     CONF_DEVICE_SN,
     CONF_LOGGER_SERIAL,
     CONF_MAC,
@@ -557,7 +558,21 @@ class PylontechOptionsFlow(OptionsFlowWithReload):
                 from .stats import async_forget_install
 
                 await async_forget_install(self.hass, entry, DOMAIN)
-            return self.async_create_entry(data={**entry.options, **user_input})
+            options = {**entry.options, **user_input}
+            if options.get(CONF_DASHBOARD) or entry.options.get(CONF_DASHBOARD):
+                # Saving with the box ticked builds the dashboard again, and
+                # unticking it takes the battery off. Imported here: only this
+                # branch needs Lovelace.
+                from . import dashboard
+
+                if options == dict(entry.options):
+                    # Nothing changed, so no reload follows: built now.
+                    await dashboard.async_apply_safely(self.hass)
+                else:
+                    # Built by the set-up that follows the reload, when the
+                    # entities are what the new options make them.
+                    dashboard.async_request(self.hass, entry.entry_id)
+            return self.async_create_entry(data=options)
         if cloud:
             interval = _number(MIN_CLOUD_INTERVAL, MAX_CLOUD_INTERVAL, 60, "s")
             default_interval = DEFAULT_CLOUD_INTERVAL
@@ -570,6 +585,8 @@ class PylontechOptionsFlow(OptionsFlowWithReload):
         }
         if not cloud:
             fields[vol.Required(CONF_CELL_DATA, default=current.get(CONF_CELL_DATA, True))] = bool
+        fields[vol.Required(CONF_DASHBOARD,
+                            default=bool(current.get(CONF_DASHBOARD, False)))] = bool
         fields[vol.Optional(CONF_SEND_STATISTICS,
                             default=current.get(CONF_SEND_STATISTICS, True))] = bool
         return self.async_show_form(

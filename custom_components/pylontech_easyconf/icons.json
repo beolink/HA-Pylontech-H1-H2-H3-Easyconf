@@ -1,0 +1,36 @@
+{
+  "entity": {
+    "binary_sensor": {
+      "fully_charged": {
+        "default": "mdi:battery-check",
+        "state": {
+          "off": "mdi:battery-outline"
+        }
+      }
+    },
+    "sensor": {
+      "cell_count": {
+        "default": "mdi:view-grid"
+      },
+      "cell_voltage_spread": {
+        "default": "mdi:arrow-expand-vertical"
+      },
+      "cycles": {
+        "default": "mdi:battery-sync"
+      },
+      "module_count": {
+        "default": "mdi:view-module"
+      },
+      "soh": {
+        "default": "mdi:battery-heart-variant"
+      },
+      "state": {
+        "default": "mdi:battery-clock",
+        "state": {
+          "charging": "mdi:battery-charging",
+          "discharging": "mdi:battery-arrow-down"
+        }
+      }
+    }
+  }
+}

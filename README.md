@@ -134,8 +134,38 @@ diagnostic sensor under Solarman's own name.
 - **Read every cell** (local only). Off, the cells' entities go and a reading
   takes four requests instead of twenty or more on a large Force H3 string; the
   modules and the stack's highest and lowest cell are still read.
+- **Show the battery on the Pylontech dashboard**, see the next section.
 - **Send anonymous usage statistics**, see below. Off stops the reporting;
   what was sent stays.
+
+### The dashboard
+
+Tick *Show the battery on the Pylontech dashboard* under *Configure* and a
+dashboard named **Pylontech** appears in the sidebar, with three tabs:
+
+- **Overview:** the state of charge as a gauge, state, power, energy left,
+  voltage, current, temperature, health and cycles; the energy charged and
+  discharged today and in total, with the day's graphs of charge and power;
+  and the cell balance: the highest and lowest cell, their spread and its
+  graph, the warmest and coldest cell and the limits the BMS gives the
+  inverter.
+- **Modules:** every module's voltage, temperature and highest and lowest
+  cell, and all the modules' voltages and temperatures in one graph each,
+  where a module that drifts from the others shows.
+- **Cells:** every cell's voltage, a grid per module, and the cells'
+  temperatures where you enabled them. Left out with *Read every cell* off
+  and for a battery read through the cloud.
+
+It is made of the cards Home Assistant ships, so there is nothing else to
+install. Several batteries share the one dashboard; two of the same name are
+told apart by the end of their serial numbers.
+
+The dashboard is built when the dialog is saved with the box ticked, and
+never by itself. So after a change (a module added, cell data switched on or
+off, an entity enabled or renamed), open *Configure* and save once more.
+What you changed by hand on the three tabs is replaced then; tabs you added
+yourself are kept. Unticked, the battery is taken off the dashboard, and the
+dashboard goes with its last battery unless you added tabs of your own.
 
 ## How it behaves
 
@@ -178,8 +208,13 @@ diagnostic sensor under Solarman's own name.
   the search finds the logger but no battery behind it, or the address does
   not answer on 8899, an RS485 converter or the cloud is the way.
 - **Several towers** are read tower by tower, each through its own module
-  and on its own Modbus address. Whether the first tower's BMS also reports
-  the other towers' cells, so that one connection would do, is not known.
+  and on its own Modbus address, which the set-up finds. On the first tower
+  of several in parallel the summary block the integration reads (0x1100)
+  appears to hold the whole system's totals, and its mirror (0x1400) the
+  tower's own, as an owner of three towers found (2026-11); on a single
+  tower the two hold the same values. Reading the tower's own block there,
+  and showing the system's totals as a device of their own, is next on the
+  [roadmap](docs/ROADMAP.md). The diagnostics file holds both blocks.
 - **The current's sign through the cloud** is Solarman's, which has not been
   compared with the BMS's.
 
@@ -188,7 +223,8 @@ diagnostic sensor under Solarman's own name.
 *Settings, Devices and services, Pylontech Easyconf*, the three dots next to
 the battery, *Download diagnostics*. The file says how the battery is reached,
 how many requests and failures there were and the last error, and holds the
-last reading with its raw register words. The address, the serial numbers,
+last reading with its raw register words and both summary blocks (0x1100 and
+0x1400) as the BMS has them at that moment. The address, the serial numbers,
 the MAC address and the cloud credentials are taken out.
 
 Debug logging:
@@ -231,7 +267,7 @@ sockets against `tests/fake_logger.py` (a Solarman logger, a Modbus TCP
 gateway and an RS485 converter in one) and the cloud against
 `tests/fake_cloud.py`. `scripts/smoke_real_ha.py` runs the whole integration
 under a real Home Assistant against the same fakes: every set-up path, the
-options, the diagnostics, an outage and a refused login.
+options, the dashboard, the diagnostics, an outage and a refused login.
 
 ```bash
 pip install homeassistant==2026.9.4
@@ -240,6 +276,8 @@ python scripts/smoke_real_ha.py
 
 The texts in `strings.json` and `translations/` are written by
 `scripts/build_strings.py`; change them there.
+
+What is planned, and what a review of the code found: [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Credits
 

@@ -133,11 +133,13 @@
         "data": {
           "scan_interval": "Seconds between readings",
           "cell_data": "Read every cell",
+          "dashboard": "Show the battery on the Pylontech dashboard",
           "send_statistics": "Send anonymous usage statistics"
         },
         "data_description": {
           "scan_interval": "Locally 10 seconds at the least; the cloud has new data every five minutes.",
           "cell_data": "Each cell's voltage and temperature. Off, the modules and the stack's highest and lowest cell are still read, with far fewer requests to the logger.",
+          "dashboard": "Builds a dashboard named Pylontech in the sidebar: an overview, the modules and every cell of each battery that has this ticked. It is built again from the battery's current entities every time this dialog is saved with the box ticked, so save once more after a change: a module added, cell data switched on or off, an entity enabled or renamed. What you changed by hand on the three generated tabs is replaced then; tabs you added yourself are kept. Unticked, the battery is taken off the dashboard, and the dashboard goes with its last battery unless you added tabs of your own.",
           "send_statistics": "One report per day to {endpoint}: the integration's version, Home Assistant's version and installation type, the country you configured in Home Assistant, an approximate position rounded to about 11 km, the battery family (Force H1, H2 or H3), how it is reached (Wi-Fi or LAN module, Modbus TCP, RS485 converter or the Solarman cloud), how many modules and cells per module it has, its firmware, whether cell data is read, and how many polls failed since the last report. No reading: no voltage, no charge, no temperature. Never a name, an address, an exact position, a serial number or an entity name, and your IP address is not stored. It also sends a random id created when the integration was installed, so that the daily reports can be kept apart and erased on request (the server keeps it only as a hash, and it says nothing about who you are), a hash that links the beolink plugins running on the same Home Assistant, how many warnings and errors the integration logged since the previous report, and whether it is running or waiting to start again, never the messages themselves or the reason. Switching this off stops the reporting, and the installation is marked as having stopped. What has already been sent stays: it is anonymous, carries no free text and is stored per day, and which installations have existed is what the statistics are for. Erasure on request, from whoever runs the service. The full list: {privacy_url}"
         }
       }
