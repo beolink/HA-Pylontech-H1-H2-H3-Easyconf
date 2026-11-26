@@ -296,6 +296,114 @@ def test_a_modbus_tcp_gateway_is_found_after_solarman_fails():
     assert server.connections == 2
 
 
+# Several towers: each tower's BMS has a Modbus address of its own, and the
+# set-up tries 1 to 8 behind a module that has shown it speaks the protocol.
+
+
+def _probe_slaves(battery, kind, slaves, serial=0, timeout=0.4):
+    async def go():
+        async with FakeServer(battery) as server:
+            return await reader.probe("127.0.0.1", server.port, kind, serial, timeout=timeout,
+                                      slaves=slaves)
+
+    return run(go())
+
+
+def test_a_second_tower_behind_a_logger_is_found_on_its_own_address():
+    # The serial is learned from the logger's first answer, which shows it is
+    # a Solarman logger, so its silence on address 1 is worth trying further.
+    battery = FakeBattery(h2.bank(), slave=2)
+    result = _probe_slaves(battery, "solarman_v5", reader.AUTO_SLAVES)
+    assert (result.kind, result.slave, result.serial) == ("solarman_v5", 2, battery.serial)
+    assert result.identity.model == "Force H2"
+    # The identity block and then the serial block are read at the address found.
+    assert list(dict.fromkeys(battery.slaves_asked)) == [1, 2]
+
+
+def test_a_third_tower_behind_a_logger_whose_serial_is_known():
+    battery = FakeBattery(h2.bank(), slave=3)
+    result = _probe_slaves(battery, "solarman_v5", reader.AUTO_SLAVES, serial=battery.serial)
+    assert result.slave == 3
+    assert list(dict.fromkeys(battery.slaves_asked)) == [1, 2, 3]
+
+
+def test_a_gateway_that_answers_exception_0x0b_is_searched_by_address():
+    battery = FakeBattery(h2.bank(), kind="modbus_tcp", slave=3, other_slaves="exception")
+    result = _probe_slaves(battery, "modbus_tcp", reader.AUTO_SLAVES)
+    assert (result.kind, result.slave) == ("modbus_tcp", 3)
+
+
+def test_a_gateway_that_stays_silent_is_not_searched_by_address():
+    # Silence does not show the protocol is right: eight silences would cost
+    # eight timeouts on a device that speaks something else.
+    battery = FakeBattery(h2.bank(), kind="modbus_tcp", slave=3)
+    with pytest.raises(reader.ProbeError) as err:
+        _probe_slaves(battery, "modbus_tcp", reader.AUTO_SLAVES)
+    assert err.value.reason == "no_battery"
+    assert battery.slaves_asked == [1]
+
+
+def test_an_address_typed_in_is_tried_alone():
+    battery = FakeBattery(h2.bank(), slave=2)
+    with pytest.raises(reader.ProbeError) as err:
+        _probe_slaves(battery, "solarman_v5", [4], serial=battery.serial)
+    assert err.value.reason == "no_battery"
+    assert battery.slaves_asked == [4]
+    assert _probe_slaves(FakeBattery(h2.bank(), slave=4), "solarman_v5", [4]).slave == 4
+
+
+def test_a_logger_busy_after_a_missing_address_is_waited_out():
+    # Against VSH's logger, addresses 2, 3, 1 in that order gave no answer at
+    # all with a 2.5 s wait per address: each unanswered request kept the
+    # logger busy past the next wait. The fake is busy 0.6 s after a miss, the
+    # further addresses get 1 s (the real logger ~6.2 s, the real wait 7.5 s).
+    battery = FakeBattery(h2.bank(), busy_after_miss=0.6)
+    result = _probe_slaves(battery, "solarman_v5", [2, 3, 1], serial=battery.serial, timeout=0.4)
+    assert result.slave == 1
+    assert list(dict.fromkeys(battery.slaves_asked)) == [2, 3, 1]
+
+
+def test_a_wait_shorter_than_the_logger_is_busy_misses_the_battery():
+    # The other side of the same measurement: a wait under the busy window
+    # gives up while the logger still holds the request.
+    battery = FakeBattery(h2.bank(), busy_after_miss=0.6)
+
+    async def go():
+        async with FakeServer(battery) as server:
+            return await reader.probe("127.0.0.1", server.port, "solarman_v5", battery.serial,
+                                      timeout=0.2, slaves=[2, 3, 1], extra_timeout=0.2)
+
+    with pytest.raises(reader.ProbeError):
+        run(go())
+
+
+def test_no_tower_on_any_address_is_no_battery_not_an_inverter():
+    battery = FakeBattery(h2.bank(), slave=12)
+    with pytest.raises(reader.ProbeError) as err:
+        _probe_slaves(battery, "solarman_v5", reader.AUTO_SLAVES, serial=battery.serial,
+                      timeout=0.2)
+    assert err.value.reason == "no_battery"
+    assert battery.slaves_asked == list(reader.AUTO_SLAVES)
+
+
+def test_a_modbus_exception_is_no_battery_and_the_search_goes_on():
+    # Before 0.1.5 a Modbus exception was taken for "not a Pylontech BMS".
+    battery = FakeBattery(h2.bank(), kind="modbus_tcp", slave=2, other_slaves="exception")
+    result = _probe_slaves(battery, "modbus_tcp", [1, 2])
+    assert result.slave == 2
+
+
+def test_an_inverter_logger_still_names_itself():
+    bank = h2.bank()
+    for offset, word in enumerate(h2.text_words("Deye", 5) + [0] * 11):
+        bank[0x1000 + offset] = word
+    battery = FakeBattery(bank)
+    with pytest.raises(reader.ProbeError) as err:
+        _probe_slaves(battery, "solarman_v5", reader.AUTO_SLAVES)
+    assert err.value.reason == "not_pylontech"
+    assert battery.slaves_asked[-1] == 1  # no search past a device that named itself
+
+
 def test_auto_attempt_order():
     assert reader.attempts("auto", None)[0] == ("solarman_v5", 8899)
     assert reader.attempts("auto", 502)[0] == ("modbus_tcp", 502)

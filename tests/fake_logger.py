@@ -41,7 +41,18 @@ class FakeBattery:
     #: logger does when another client asked at the same moment.
     drop: set[int] = field(default_factory=set)
     seen: int = 0
+    #: What a request to another Modbus address than the BMS's gets: nothing,
+    #: as from a Solarman logger with no BMS on that address (a Force H3's
+    #: logger, 2026-11), or exception 0x0B, gateway target failed to respond,
+    #: as a Modbus TCP gateway may send.
+    other_slaves: str = "silent"
+    #: Seconds a Solarman logger stays busy after a request to an address with
+    #: no BMS, holding the next request until then: about 6 on a real one.
+    busy_after_miss: float = 0.0
+    busy_until: float = 0.0
     requests: list[tuple[int, int]] = field(default_factory=list)
+    #: Every Modbus address asked, in order.
+    slaves_asked: list[int] = field(default_factory=list)
     wrong_serial_answers: int = 0
 
     def registers(self, address: int, count: int) -> list[int] | int:
@@ -53,9 +64,15 @@ class FakeBattery:
             return 2
         return [self.bank[a] for a in range(address, address + count)]
 
-    # The RTU answer the BMS itself would give.
-    def rtu_answer(self, request: bytes) -> bytes:
+    # The RTU answer the BMS itself would give, or None for silence.
+    def rtu_answer(self, request: bytes) -> bytes | None:
         slave, function, address, count = struct.unpack(">BBHH", request[:6])
+        self.slaves_asked.append(slave)
+        if slave != self.slave:
+            if self.other_slaves == "silent":
+                return None
+            body = bytes([slave, function | 0x80, 0x0B])
+            return body + modbus.crc16(body)
         self.requests.append((address, count))
         result = self.registers(address, count)
         if isinstance(result, int):
@@ -134,7 +151,17 @@ class FakeServer:
                     writer.write(_v5_answer(battery.serial, frame.raw[5], b""))
                     continue
                 request = frame.payload[solarman_v5.REQUEST_PREFIX:]
+                now = asyncio.get_running_loop().time()
+                if now < battery.busy_until:
+                    # Still waiting for the BMS that is not there: this request
+                    # is held until then, then passed on.
+                    await asyncio.sleep(battery.busy_until - now)
                 answer = b"" if battery.battery_off else battery.rtu_answer(request)
+                if answer is None:
+                    # Nothing on that Modbus address: the logger says nothing
+                    # and is busy for a while.
+                    battery.busy_until = asyncio.get_running_loop().time() + battery.busy_after_miss
+                    continue
                 writer.write(_v5_answer(battery.serial, frame.raw[5], answer))
             await writer.drain()
 
@@ -147,6 +174,8 @@ class FakeServer:
             if battery.silent:
                 continue
             rtu = battery.rtu_answer(bytes([unit]) + pdu + b"\x00\x00")
+            if rtu is None:
+                continue
             body = rtu[1:-2]
             writer.write(struct.pack(">HHHB", tid, 0, len(body) + 1, unit) + body)
             await writer.drain()
@@ -157,8 +186,10 @@ class FakeServer:
             request = await reader.readexactly(8)
             if battery.silent:
                 continue
-            writer.write(battery.rtu_answer(request))
-            await writer.drain()
+            answer = battery.rtu_answer(request)
+            if answer is not None:
+                writer.write(answer)
+                await writer.drain()
 
 
 def _v5_answer(serial: int, sequence: int, modbus_frame: bytes) -> bytes:

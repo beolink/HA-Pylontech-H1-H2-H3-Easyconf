@@ -65,8 +65,8 @@ STATS_LABEL = {"en": "Send anonymous usage statistics", "sv": "Skicka anonym anv
 ERRORS = {
     "en": {
         "cannot_connect": "Nothing answered at that address and port. Check the address, and that Home Assistant can reach that network.",
-        "no_battery": "Something answered at that address, but no battery answered behind it. Is the battery switched on, and is the Modbus address right (1 unless it was changed)?",
-        "not_pylontech": "A device answered, but it is not a Pylontech BMS. It may be the logger of an inverter.",
+        "no_battery": "The module answered, but no Pylontech BMS answered behind it. Is the battery switched on? In a system of several towers each tower's BMS has a Modbus address of its own: left at 1, the addresses 1 to 8 are tried; any other address is tried alone.",
+        "not_pylontech": "A device answered and named itself as something other than a Pylontech BMS, the logger of an inverter, say.",
         "invalid_serial": "The logger's serial number is digits only. Leave it empty to have it read from the logger.",
         "invalid_auth": "Solarman refused the app id, the app secret or the account.",
         "cloud_unreachable": "The Solarman cloud did not answer. Try again in a while.",
@@ -74,8 +74,8 @@ ERRORS = {
     },
     "sv": {
         "cannot_connect": "Inget svarade på den adressen och porten. Kontrollera adressen och att Home Assistant når det nätet.",
-        "no_battery": "Något svarade på adressen, men inget batteri svarade bakom det. Är batteriet påslaget, och stämmer Modbus-adressen (1 om den inte ändrats)?",
-        "not_pylontech": "En enhet svarade, men det är ingen Pylontech-BMS. Det kan vara loggaren till en växelriktare.",
+        "no_battery": "Modulen svarade, men ingen Pylontech-BMS svarade bakom den. Är batteriet påslaget? I ett system med flera torn har varje torns BMS en egen Modbus-adress: står fältet på 1 provas adresserna 1 till 8, en annan adress provas ensam.",
+        "not_pylontech": "En enhet svarade och angav sig vara något annat än en Pylontech-BMS, till exempel loggaren till en växelriktare.",
         "invalid_serial": "Loggarens serienummer består bara av siffror. Lämna fältet tomt så läses det från loggaren.",
         "invalid_auth": "Solarman godtog inte app-id, app-hemlighet eller kontot.",
         "cloud_unreachable": "Solarman-molnet svarade inte. Försök igen om en stund.",
@@ -126,14 +126,14 @@ MANUAL_HELP = {
         "port": "8899 for the Wi-Fi or LAN module (Solarman), 502 for Modbus TCP, or the converter's own port.",
         "transport": "Automatic tries Solarman, Modbus TCP and RTU over TCP in the order the port suggests.",
         "logger_serial": "Only for the Solarman protocol, and read from the logger when left empty.",
-        "slave": "1 unless the installer changed it.",
+        "slave": "Left at 1, the addresses 1 to 8 are tried, which finds each tower of a system of several towers. Any other address is tried alone.",
     },
     "sv": {
         "host": "IP-adressen eller namnet på batteriets wifi- eller LAN-modul, eller på omvandlaren på dess RS485-port.",
         "port": "8899 för wifi- eller LAN-modulen (Solarman), 502 för Modbus TCP, eller omvandlarens egen port.",
         "transport": "Automatiskt provar Solarman, Modbus TCP och RTU över TCP i den ordning porten antyder.",
         "logger_serial": "Bara för Solarman-protokollet, och läses från loggaren om fältet lämnas tomt.",
-        "slave": "1 om installatören inte ändrat den.",
+        "slave": "Står den på 1 provas adresserna 1 till 8, vilket hittar varje torn i ett system med flera torn. En annan adress provas ensam.",
     },
 }
 

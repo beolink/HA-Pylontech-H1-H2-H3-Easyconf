@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.1.5] - 2026-11-26
+
+- **A second and third tower are found without knowing their Modbus
+  address.** In a system of several towers each tower's BMS has a Modbus
+  address of its own, and the set-up asked address 1 only: an owner of three
+  towers had to find the address field before their second and third tower
+  would set up (issue #1). With the field left at 1, the set-up now tries the
+  addresses 1 to 8 and keeps the one that answers; the search and DHCP do
+  the same; an address typed in is tried alone. The further addresses are
+  tried only behind a module that has shown it speaks the protocol (a
+  Solarman logger by its serial number, any module by a Modbus exception),
+  so a device that speaks something else costs one wait, not eight. A
+  Solarman logger stays busy about six seconds after a request to an address
+  with no BMS and holds the next request until then (measured on a Force H3's
+  logger), so each further address gets 7.5 s: on that logger the BMS was
+  found behind two empty addresses in 13 to 18 s. A tower on address 2 takes
+  about 7 s, one on address 3 about 14; a module with no BMS behind it at all
+  takes about a minute to give up.
+- **The right message when no BMS answers.** A Modbus exception from the
+  module, which means that nothing answered on that address, was shown as
+  "not a Pylontech BMS, the logger of an inverter perhaps". It is now the
+  message that no BMS answered behind the module, which names the Modbus
+  address and several towers. "Not a Pylontech BMS" is left for a device that
+  names itself as something else.
+
 ## [0.1.4] - 2026-10-28
 
 - **The search finds a battery behind a Modbus TCP gateway too.** On one

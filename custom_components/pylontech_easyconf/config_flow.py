@@ -78,7 +78,7 @@ from .const import (
     SOURCE_LOCAL,
     STATS_PLACEHOLDERS,
 )
-from .reader import AUTO, ProbeError, ProbeResult
+from .reader import AUTO, AUTO_SLAVES, ProbeError, ProbeResult
 from .registers import model_name
 from .transport import KINDS, MODBUS_TCP, SOLARMAN_V5
 
@@ -100,13 +100,13 @@ def _title(model: str | None, suffix: str = "") -> str:
     return f"Pylontech {model or 'Force'}{suffix}"
 
 
-def _local_data(result: ProbeResult, host: str, slave: int, mac: str | None = None) -> dict:
+def _local_data(result: ProbeResult, host: str, mac: str | None = None) -> dict:
     data: dict[str, Any] = {
         CONF_SOURCE: SOURCE_LOCAL,
         CONF_HOST: host,
         CONF_PORT: result.port,
         CONF_TRANSPORT: result.kind,
-        CONF_SLAVE: slave,
+        CONF_SLAVE: result.slave,
     }
     if result.serial:
         data[CONF_LOGGER_SERIAL] = result.serial
@@ -173,9 +173,17 @@ async def _scan_hosts(hass) -> list[str]:
     return discovery.scan_hosts(await _local_networks(hass))
 
 
+def _slaves(typed: int) -> tuple[int, ...]:
+    """The Modbus addresses to try for the address field's value: left at 1,
+    1 to 8, so each tower of a system of several is found; any other alone."""
+    return AUTO_SLAVES if typed == DEFAULT_SLAVE else (typed,)
+
+
 def _found_label(result: ProbeResult, found: discovery.FoundLogger) -> str:
     where = f"{found.ip}:{result.port}" if result.kind != SOLARMAN_V5 else found.ip
     via = f"logger {found.serial}" if found.serial else result.kind.replace("_", " ")
+    if result.slave != DEFAULT_SLAVE:
+        via += f", Modbus address {result.slave}"
     return f"{_title(result.identity.model)}, {where} ({via})"
 
 
@@ -230,7 +238,7 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
         async def ask(order: list[tuple[str, int]], found: discovery.FoundLogger):
             try:
                 return await reader.probe(found.ip, serial=found.serial, timeout=PROBE_TIMEOUT,
-                                          order=order), found
+                                          order=order, slaves=AUTO_SLAVES), found
             except ProbeError as err:
                 _LOGGER.debug("No Pylontech at %s: %s", found.ip, err)
                 return None
@@ -267,7 +275,7 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured(updates={CONF_HOST: found.ip})
             return self.async_create_entry(
                 title=_title(result.identity.model),
-                data=_local_data(result, found.ip, DEFAULT_SLAVE,
+                data=_local_data(result, found.ip,
                                  format_mac(found.mac) if found.mac else None),
                 options={CONF_SEND_STATISTICS: user_input.get(CONF_SEND_STATISTICS, True)},
             )
@@ -300,8 +308,8 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
                 int(user_input[CONF_PORT]),
                 user_input[CONF_TRANSPORT],
                 int(serial_text or 0),
-                int(user_input[CONF_SLAVE]),
                 timeout=PROBE_TIMEOUT,
+                slaves=_slaves(int(user_input[CONF_SLAVE])),
             )
         except ProbeError as err:
             _LOGGER.debug("Probe of %s failed: %s", user_input[CONF_HOST], err)
@@ -321,7 +329,7 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured(updates={CONF_HOST: host})
                 return self.async_create_entry(
                     title=_title(result.identity.model),
-                    data=_local_data(result, host, int(user_input[CONF_SLAVE])),
+                    data=_local_data(result, host),
                     options={CONF_SEND_STATISTICS: user_input.get(CONF_SEND_STATISTICS, True)},
                 )
             errors["base"] = error or "cannot_connect"
@@ -350,7 +358,7 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
         # A Solarman logger in its own protocol first, then Modbus TCP on 502
         # and 8899, where a Modbus TCP gateway such as an Elfin module answers.
         try:
-            result = await reader.probe(ip, 8899, AUTO, timeout=PROBE_TIMEOUT)
+            result = await reader.probe(ip, 8899, AUTO, timeout=PROBE_TIMEOUT, slaves=AUTO_SLAVES)
         except ProbeError:
             return self.async_abort(reason="not_pylontech")
         await self.async_set_unique_id(_unique_id(result, ip, result.port))
@@ -366,7 +374,7 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             return self.async_create_entry(
                 title=_title(result.identity.model),
-                data=_local_data(result, ip, DEFAULT_SLAVE, mac),
+                data=_local_data(result, ip, mac),
                 options={CONF_SEND_STATISTICS: user_input.get(CONF_SEND_STATISTICS, True)},
             )
         self._set_confirm_only()
@@ -522,7 +530,7 @@ class PylontechConfigFlow(ConfigFlow, domain=DOMAIN):
                 host = user_input[CONF_HOST].strip()
                 await self.async_set_unique_id(_unique_id(result, host, result.port))
                 self._abort_if_unique_id_mismatch(reason="another_battery")
-                data = {**entry.data, **_local_data(result, host, int(user_input[CONF_SLAVE]))}
+                data = {**entry.data, **_local_data(result, host)}
                 return self.async_update_reload_and_abort(entry, data=data)
             errors["base"] = error or "cannot_connect"
         return self.async_show_form(

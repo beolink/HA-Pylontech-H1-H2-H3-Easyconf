@@ -75,6 +75,15 @@ one of three:
   stored, which is what Solarman's API asks for. If the account has several
   batteries, you pick one.
 
+**Several towers.** In a system of several towers, each tower with a module
+of its own (Wi-Fi, LAN or a gateway) is set up as a battery of its own: run
+the search again, or enter the next tower's address. Each tower's BMS has a
+Modbus address of its own; an owner of three towers found the second and
+third on another address than 1. Left at 1, the address field makes the
+set-up try the addresses 1 to 8 and keep the one that answers, so a tower
+is found without knowing its address; any other address is tried alone.
+The search and DHCP try 1 to 8 as well.
+
 Home Assistant also offers a battery by itself when it sees the battery's
 module join the network (a Solarman logger, MAC 40:2A:8F or E8:FD:F8, or a
 High-Flying gateway, 74:E9:D8) and a Pylontech BMS answers behind it, in
@@ -165,9 +174,9 @@ diagnostic sensor under Solarman's own name.
   report that recent Solarman logger firmwares refuse local connections. If
   the search finds the logger but no battery behind it, or the address does
   not answer on 8899, an RS485 converter or the cloud is the way.
-- **Several strings in parallel** (a Force H3 system of up to six towers)
-  have not been tried. The master string's BMS answers; whether it reports
-  the other strings' cells is not known.
+- **Several towers** are read tower by tower, each through its own module
+  and on its own Modbus address. Whether the first tower's BMS also reports
+  the other towers' cells, so that one connection would do, is not known.
 - **The current's sign through the cloud** is Solarman's, which has not been
   compared with the BMS's.
 

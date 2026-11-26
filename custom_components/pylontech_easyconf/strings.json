@@ -42,7 +42,7 @@
           "port": "8899 for the Wi-Fi or LAN module (Solarman), 502 for Modbus TCP, or the converter's own port.",
           "transport": "Automatic tries Solarman, Modbus TCP and RTU over TCP in the order the port suggests.",
           "logger_serial": "Only for the Solarman protocol, and read from the logger when left empty.",
-          "slave": "1 unless the installer changed it.",
+          "slave": "Left at 1, the addresses 1 to 8 are tried, which finds each tower of a system of several towers. Any other address is tried alone.",
           "send_statistics": "One report per day to {endpoint}: the integration's version, Home Assistant's version and installation type, the country you configured in Home Assistant, an approximate position rounded to about 11 km, the battery family (Force H1, H2 or H3), how it is reached (Wi-Fi or LAN module, Modbus TCP, RS485 converter or the Solarman cloud), how many modules and cells per module it has, its firmware, whether cell data is read, and how many polls failed since the last report. No reading: no voltage, no charge, no temperature. Never a name, an address, an exact position, a serial number or an entity name, and your IP address is not stored. It also sends a random id created when the integration was installed, so that the daily reports can be kept apart and erased on request (the server keeps it only as a hash, and it says nothing about who you are), a hash that links the beolink plugins running on the same Home Assistant, how many warnings and errors the integration logged since the previous report, and whether it is running or waiting to start again, never the messages themselves or the reason. Switching this off stops the reporting, and the installation is marked as having stopped. What has already been sent stays: it is anonymous, carries no free text and is stored per day, and which installations have existed is what the statistics are for. Erasure on request, from whoever runs the service. The full list: {privacy_url}"
         }
       },
@@ -103,14 +103,14 @@
           "port": "8899 for the Wi-Fi or LAN module (Solarman), 502 for Modbus TCP, or the converter's own port.",
           "transport": "Automatic tries Solarman, Modbus TCP and RTU over TCP in the order the port suggests.",
           "logger_serial": "Only for the Solarman protocol, and read from the logger when left empty.",
-          "slave": "1 unless the installer changed it."
+          "slave": "Left at 1, the addresses 1 to 8 are tried, which finds each tower of a system of several towers. Any other address is tried alone."
         }
       }
     },
     "error": {
       "cannot_connect": "Nothing answered at that address and port. Check the address, and that Home Assistant can reach that network.",
-      "no_battery": "Something answered at that address, but no battery answered behind it. Is the battery switched on, and is the Modbus address right (1 unless it was changed)?",
-      "not_pylontech": "A device answered, but it is not a Pylontech BMS. It may be the logger of an inverter.",
+      "no_battery": "The module answered, but no Pylontech BMS answered behind it. Is the battery switched on? In a system of several towers each tower's BMS has a Modbus address of its own: left at 1, the addresses 1 to 8 are tried; any other address is tried alone.",
+      "not_pylontech": "A device answered and named itself as something other than a Pylontech BMS, the logger of an inverter, say.",
       "invalid_serial": "The logger's serial number is digits only. Leave it empty to have it read from the logger.",
       "invalid_auth": "Solarman refused the app id, the app secret or the account.",
       "cloud_unreachable": "The Solarman cloud did not answer. Try again in a while.",

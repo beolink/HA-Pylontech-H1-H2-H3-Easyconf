@@ -418,6 +418,30 @@ async def run(hass, failures: list[str]) -> None:
     else:
         print("smoke   skip  network search and DHCP: port 8899 or 48899 is taken here")
 
+    # 6c. A second tower: its BMS on Modbus address 2 behind its own logger,
+    # set up through the address step with the field left at 1, as an owner
+    # of three towers did before finding the field (issue #1).
+    tower = FakeBattery(h3.bank(), serial=3700000002, slave=2)
+    async with FakeServer(tower) as server:
+        result = await flow.async_init(DOMAIN, context={"source": "user"})
+        result = await flow.async_configure(result["flow_id"], {"next_step_id": "manual"})
+        result = await flow.async_configure(result["flow_id"], {
+            "host": "127.0.0.1", "port": server.port, "transport": "solarman_v5",
+            "logger_serial": "", "slave": 1, "send_statistics": False,
+        })
+        assert kind(result) == "create_entry", result
+        await hass.async_block_till_done()
+        tower_entry = result["result"]
+        assert tower_entry.data["slave"] == 2, tower_entry.data
+        assert tower_entry.data["logger_serial"] == tower.serial
+        assert tower_entry.state is ConfigEntryState.LOADED
+        assert state("sensor", f"{h3.SERIAL}_state").state == "charging"
+        assert set(tower.slaves_asked) == {1, 2}
+        ok("a second tower on Modbus address 2, found with the field left at 1")
+        assert await hass.config_entries.async_unload(tower_entry.entry_id)
+        await hass.config_entries.async_remove(tower_entry.entry_id)
+        await hass.async_block_till_done()
+
     # 7. The cloud.
     async with FakeSolarman() as fake:
         cloud.BASE_URL = fake.url

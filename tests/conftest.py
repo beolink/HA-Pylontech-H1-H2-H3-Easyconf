@@ -32,3 +32,9 @@ sys.path.insert(0, str(ROOT / "tests"))
 from custom_components.pylontech_easyconf import transport as _transport  # noqa: E402
 
 _transport.RETRY_PAUSE = (0.0, 0.01)
+
+# The wait for each further Modbus address (reader.py, EXTRA_SLAVE_TIMEOUT) is
+# 7.5 s against a real logger; the fakes' busy window is scaled down with it.
+from custom_components.pylontech_easyconf import reader as _reader  # noqa: E402
+
+_reader.EXTRA_SLAVE_TIMEOUT = 1.0
