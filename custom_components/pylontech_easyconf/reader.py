@@ -71,11 +71,19 @@ async def read_snapshot(transport: Transport, summary_start: int | None = None,
     multi-tower summary block (0x1100) with no module or cell blocks.
     """
     if system_only:
-        summary = await transport.read_registers(
-            registers.SYSTEM_SUMMARY_START, registers.SUMMARY_COUNT
+        system_summary: list[int] = []
+        for start, count in registers.SYSTEM_SUMMARY_CHUNKS:
+            system_summary.extend(await transport.read_registers(start, count))
+        parallel_towers = (
+            system_summary[0x31]
+            if len(system_summary) > 0x31 and system_summary[0x31] > 1
+            else 1
         )
-        snapshot = registers.decode(summary, None, None, None, None)
-        parallel_towers = summary[0x31] if len(summary) > 0x31 and summary[0x31] > 1 else 1
+        if parallel_towers <= 1 and registers.has_parallel_indices(system_summary):
+            raise registers.DecodeError(
+                "inconsistent parallel system summary (parallel indices without tower count)"
+            )
+        snapshot = registers.decode(system_summary, None, None, None, None)
         if snapshot.module_count is not None:
             snapshot.module_count *= parallel_towers
         if snapshot.cell_count is not None:
@@ -99,6 +107,12 @@ async def read_snapshot(transport: Transport, summary_start: int | None = None,
             continue
     if summary is None:
         raise registers.DecodeError("the BMS has neither summary block (0x1100, 0x1400)")
+    if used == registers.TOWER_SUMMARY_START and (
+        (len(summary) > 0x31 and summary[0x31] > 1) or registers.has_parallel_indices(summary)
+    ):
+        raise registers.DecodeError(
+            "received combined system summary (0x1100) while reading single tower (0x1400)"
+        )
     modules, cell_count = registers.counts(summary)
     module_voltages = await _optional(transport, registers.MODULE_VOLTAGES_START, modules)
     module_temperatures = await _optional(transport, registers.MODULE_TEMPERATURES_START, modules)

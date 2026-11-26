@@ -325,6 +325,49 @@ def test_read_snapshot_system_only_uses_0x1100_and_scales_parallel_counts():
     assert (system.summary_start, system.snapshot.soc, system.snapshot.modules) == (0x1100, 42, [])
     assert (system.snapshot.module_count, system.snapshot.cell_count) == (9, 288)
     assert (system.snapshot.bms_temperature, system.snapshot.cycles) == (None, None)
+    # 0x1100 uses non-32-word chunks (31, 29) so its replies cannot collide with 0x1400 (32, 32).
+    assert battery.requests[-2:] == [(0x1100, 31), (0x111F, 29)]
     assert reader.attempts("auto", 502)[0] == ("modbus_tcp", 502)
     assert reader.attempts("auto", 4196)[0] == ("rtu_over_tcp", 4196)
     assert reader.attempts("solarman_v5", None) == [("solarman_v5", 8899)]
+
+
+def test_tower_read_rejects_swapped_parallel_system_summary():
+    from custom_components.pylontech_easyconf.registers import DecodeError
+
+    bank = h3.bank()
+    bank[0x1431] = 3  # parallel tower count that only belongs in 0x1100
+    battery = FakeBattery(bank, kind="modbus_tcp")
+
+    async def go():
+        async with FakeServer(battery) as server:
+            t = transport.make_transport("modbus_tcp", "127.0.0.1", server.port, timeout=1)
+            try:
+                return await reader.read_snapshot(t, cells=False, system_only=False)
+            finally:
+                await t.close()
+
+    with pytest.raises(DecodeError, match="combined system summary"):
+        run(go())
+
+
+def test_system_read_rejects_inconsistent_parallel_summary():
+    from custom_components.pylontech_easyconf.registers import DecodeError
+
+    bank = h3.bank()
+    for offset, word in enumerate(h3.SUMMARY):
+        bank[0x1100 + offset] = word
+    bank[0x1112] = 3160  # parallel index in chunk 1, but chunk 2 has tower count <= 1
+    bank[0x1131] = 1
+    battery = FakeBattery(bank, kind="modbus_tcp")
+
+    async def go():
+        async with FakeServer(battery) as server:
+            t = transport.make_transport("modbus_tcp", "127.0.0.1", server.port, timeout=1)
+            try:
+                return await reader.read_snapshot(t, cells=False, system_only=True)
+            finally:
+                await t.close()
+
+    with pytest.raises(DecodeError, match="inconsistent parallel system summary"):
+        run(go())

@@ -57,6 +57,14 @@ SUMMARY_STARTS = (0x1400, 0x1100)
 SYSTEM_SUMMARY_START = 0x1100
 TOWER_SUMMARY_START = 0x1400
 SUMMARY_COUNT = 64
+#: Minimum words needed to decode up to 0x38 (fully_charged).
+MIN_SUMMARY_COUNT = 0x39
+#: Non-32-word chunk layout for 0x1100 so its Modbus RTU byte counts (62 and 58)
+#: never match a 32-word 0x1400/cell response on a shared Solarman V5 logger.
+SYSTEM_SUMMARY_CHUNKS = ((SYSTEM_SUMMARY_START, 31), (SYSTEM_SUMMARY_START + 31, 29))
+#: Offsets in the summary block that carry ``tower * 1000 + local_index`` on
+#: multi-tower 0x1100 summaries.
+PARALLEL_INDEX_OFFSETS = (0x12, 0x13, 0x16, 0x17, 0x1A, 0x1B, 0x1E, 0x1F)
 SERIAL_START = 0x1450
 SERIAL_COUNT = 8
 MODULE_VOLTAGES_START = 0x1460
@@ -139,14 +147,21 @@ def decode_identity(words: list[int], serial_words: list[int] | None = None) -> 
 
 def counts(summary: list[int]) -> tuple[int, int]:
     """Modules and cells in series, as the summary block states them."""
-    if len(summary) < SUMMARY_COUNT:
-        raise DecodeError(f"summary block of {len(summary)} words, expected {SUMMARY_COUNT}")
+    if len(summary) < MIN_SUMMARY_COUNT:
+        raise DecodeError(
+            f"summary block of {len(summary)} words, expected at least {MIN_SUMMARY_COUNT}"
+        )
     modules, cells = summary[0x36], summary[0x37]
     if not 1 <= modules <= MAX_MODULES:
         raise DecodeError(f"{modules} modules in series is outside 1-{MAX_MODULES}")
     if not 0 <= cells <= MAX_CELLS:
         raise DecodeError(f"{cells} cells in series is outside 0-{MAX_CELLS}")
     return modules, cells
+
+
+def has_parallel_indices(summary: list[int]) -> bool:
+    """Whether any extreme cell/module index uses parallel ``tower * 1000`` encoding."""
+    return any(summary[offset] >= 1000 for offset in PARALLEL_INDEX_OFFSETS)
 
 
 def _split_parallel_index(index: int) -> tuple[int | None, int]:
