@@ -28,6 +28,9 @@ Open, and on the list below:
 - **The anonymous statistics are on unless switched off**, which the HACS
   default list does not accept (9).
 - **A module taken out of the stack leaves its devices behind** (11).
+- **"Charged today" and "Discharged today" follow the BMS's clock, not the
+  house's:** they start again at about five in the afternoon, Swedish time
+  (14).
 - The network search shows nothing while it works, and can take a minute (7).
 - The Home Assistant side is tested by the smoke script alone (12).
 
@@ -107,36 +110,45 @@ and from a third tower. The diagnostics file holds both blocks since 0.2.0.
     (25.6 kWh), 480.0 V and 37 Ah for five FH9637M (17.76 kWh). Two sensors,
     and with them the remaining energy as a share of what the battery was
     built for.
-14. **Alarms and protections.** The bits of the status word above the state,
+14. **A day that is the house's.** The BMS's two "today" counters go back
+    to zero by the BMS's own clock: at about 15:42, 16:07, 16:12 and 16:17
+    UTC on the four batteries, each at the same time two days running, which
+    is around midnight in China and five in the afternoon in Sweden.
+    The sensors show what the BMS reports, so their "today" runs from five to
+    five. Two sensors of the integration's own would add up what the BMS's
+    counters gain and start again at midnight where Home Assistant is, kept
+    over a restart, with the BMS's own counters left as they are. Whether
+    the BMS's clock can be read, or set, is not known.
+15. **Alarms and protections.** The bits of the status word above the state,
     and the two words after it, are read into the diagnostics and not shown.
     A binary sensor for an alarm and one for a protection, with the cause
     in the attributes, once the bits are mapped against a battery that has
     raised one.
-15. **What follows from the readings:** time to full and to empty at the
+16. **What follows from the readings:** time to full and to empty at the
     present power, the round-trip efficiency from the two lifetime totals,
     the temperature spread, and the day's highest cell spread.
-16. **Blueprints** for the things an owner wants to hear about: a cell
+17. **Blueprints** for the things an owner wants to hear about: a cell
     spread above a limit, a health that fell, a temperature out of range.
 
 ## 5. The dashboard
 
-17. **A picture of the cells** in place of 192 numbers: a small card of the
+18. **A picture of the cells** in place of 192 numbers: a small card of the
     integration's own that draws each module's cells as bars between the
     lowest and the highest, the outliers marked.
-18. **Built again when a release changes the layout**, for those who ask for
+19. **Built again when a release changes the layout**, for those who ask for
     it in the options, with tabs changed by hand left alone.
-19. **A System tab** for towers in parallel, with (2).
-20. **Names in the viewer's language.** The tiles carry the names Home
+20. **A System tab** for towers in parallel, with (2).
+21. **Names in the viewer's language.** The tiles carry the names Home
     Assistant registered, which are in the server's language.
-21. **A button and an action** that build the dashboard, for those who
+22. **A button and an action** that build the dashboard, for those who
     automate.
 
 ## 6. Hardware not seen yet
 
-22. **A real RS485 converter.** RTU over TCP is tested against a fake only.
-23. **A Force H1.** No dump of one has been published; its layout is assumed
+23. **A real RS485 converter.** RTU over TCP is tested against a fake only.
+24. **A Force H1.** No dump of one has been published; its layout is assumed
     to be the Force H2's.
-24. **The cloud's sign of the current**, compared with the BMS's.
+25. **The cloud's sign of the current**, compared with the BMS's.
 
 ## Not planned
 
