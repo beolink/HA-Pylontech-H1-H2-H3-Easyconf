@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 import logging
 import re
+import time
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -29,6 +30,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import PylontechConfigEntry, PylontechCoordinator
+from .counter_guard import CounterGuard
 from .entity import PylontechEntity
 from .model import Extreme, Module, Snapshot
 
@@ -43,11 +45,6 @@ C = UnitOfTemperature.CELSIUS
 KWH = UnitOfEnergy.KILO_WATT_HOUR
 MEASUREMENT = SensorStateClass.MEASUREMENT
 DIAGNOSTIC = EntityCategory.DIAGNOSTIC
-
-#: The most a battery could charge or discharge in an hour, with room to
-#: spare: a total that climbs faster than this between two polls is a glitch
-#: of the counter, which the published register scans warn of, not energy.
-MAX_KW = 60.0
 
 #: The unique id of one cell's sensor, <stack>_m<module>_cell_<cell>_<kind>.
 CELL_UNIQUE_ID = re.compile(r"_m\d+_cell_\d+_(voltage|temperature)$")
@@ -69,7 +66,8 @@ def _value(extreme: Extreme | None) -> float | None:
 class StackSensorDescription(SensorEntityDescription):
     value_fn: Callable[[Snapshot], Any]
     attrs_fn: Callable[[Snapshot], dict[str, Any]] | None = None
-    #: "lifetime": a total that never falls; "daily": one that falls at midnight.
+    #: "lifetime": a total that never falls; "daily": one that falls at midnight
+    #: (counter_guard.LIFETIME and DAILY).
     guard: str | None = None
 
 
@@ -292,37 +290,46 @@ class StackSensor(PylontechEntity, RestoreSensor):
                  description: StackSensorDescription) -> None:
         super().__init__(coordinator, description.key)
         self.entity_description = description
-        self._last_good: float | None = None
+        self._guard = CounterGuard(description.guard) if description.guard else None
+        #: The reading the shown value comes from. A missed poll hands the same
+        #: reading on again, and it must not count as a new one for the guard.
+        self._seen: Snapshot | None = None
+        self._shown: Any = None
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        last = await self.async_get_last_sensor_data() if self.entity_description.guard else None
-        if last is not None and isinstance(last.native_value, int | float):
-            self._last_good = float(last.native_value)
+        if self._guard is not None:
+            last = await self.async_get_last_sensor_data()
+            if last is not None and isinstance(last.native_value, int | float):
+                self._guard.last = float(last.native_value)
+        self._take_reading()
 
-    def _guarded(self, value: Any) -> Any:
-        guard = self.entity_description.guard
-        if guard is None or not isinstance(value, int | float):
-            return value
-        previous = self._last_good
-        if previous is not None:
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        self._take_reading()
+        super()._handle_coordinator_update()
+
+    def _take_reading(self) -> None:
+        snapshot = self.coordinator.data
+        if snapshot is None or snapshot is self._seen:
+            return
+        self._seen = snapshot
+        value = self.entity_description.value_fn(snapshot)
+        if self._guard is not None and isinstance(value, int | float):
             interval = self.coordinator.update_interval
-            hours = (interval.total_seconds() if interval else 60) / 3600
-            limit = 1.0 + MAX_KW * hours * (1 + self.coordinator.failures_in_row)
-            if value - previous > limit:
-                _LOGGER.debug("%s jumped from %s to %s; kept %s", self.entity_id, previous,
-                              value, previous)
-                return previous
-            if guard == "lifetime" and value < previous:
-                return previous
-        self._last_good = float(value)
-        return value
+            shown = self._guard.read(
+                float(value), time.monotonic(), interval.total_seconds() if interval else 60.0
+            )
+            if shown != value:
+                _LOGGER.debug("%s read %s, kept %s", self.entity_id, value, shown)
+            value = shown
+        self._shown = value
 
     @property
     def native_value(self) -> Any:
         if self.coordinator.data is None:
             return None
-        return self._guarded(self.entity_description.value_fn(self.coordinator.data))
+        return self._shown
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:

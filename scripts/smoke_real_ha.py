@@ -229,6 +229,40 @@ async def run(hass, failures: list[str]) -> None:
         assert coordinator.failures_total == 3
         ok("two missed polls keep the reading, the third makes it unavailable, then back")
 
+        # 2b. The energy counters: a wrong reading held back, the day's reset
+        # believed once three readings agree, a missed poll's repeat of the last
+        # reading not counted as one of them, and a lifetime counter never down.
+        def counter(offset: int, value: int) -> None:
+            for base in (0x1100, 0x1400):
+                battery.bank[base + offset] = value >> 16
+                battery.bank[base + offset + 1] = value & 0xFFFF
+
+        async def poll(key: str = "charge_today") -> str:
+            await coordinator.async_refresh()
+            await hass.async_block_till_done()
+            return state("sensor", f"{s}_{key}").state
+
+        assert state("sensor", f"{s}_charge_today").state == "2.652"
+        counter(0x23, 1000)  # one wrong lower reading mid-day
+        assert await poll() == "2.652"
+        counter(0x23, 2700)
+        assert await poll() == "2.7"
+        counter(0x23, 0)  # the BMS's midnight
+        assert await poll() == "2.7"
+        battery.silent = True
+        assert await poll() == "2.7"
+        battery.silent = False
+        counter(0x23, 10)
+        assert await poll() == "2.7"
+        counter(0x23, 20)
+        assert await poll() == "0.02"
+        counter(0x2B, 4000)
+        for _ in range(4):
+            assert await poll("charge_total") == "4942.0"
+        counter(0x2B, 4942)
+        ok("energy counters: a wrong reading held, the day's reset believed after three "
+           "agreeing readings, a lifetime total never down")
+
         # 3. The options.
         result = await hass.config_entries.options.async_init(entry.entry_id)
         assert kind(result) == "form" and result["step_id"] == "init", result

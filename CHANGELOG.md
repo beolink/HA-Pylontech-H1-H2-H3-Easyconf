@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.6] - 2026-11-26
+
+- **A day's energy total no longer sticks after one wrong reading.** A day's
+  charge and discharge totals took any fall as the reset at midnight. One
+  wrong lower reading during the day, such as another client's answer handed
+  over by a shared Solarman logger, became the last value, and every true
+  value after it was refused as a jump until midnight. A falling day's total
+  is now held back until three readings in a row agree with it.
+- **Energy moved while Home Assistant was down is counted.** The rise allowed
+  between two readings went by the poll interval, not by the time that had
+  passed, so after a restart a battery that had moved more than a poll's worth
+  of energy was refused: a day's total until midnight, a lifetime total for
+  good. The rise allowed now grows with the time since the last reading, and
+  a larger one is believed once three readings in a row agree with it.
+- A missed poll, which hands on the last reading, is not counted as one of
+  the three. A lifetime total still never falls: a false lower value
+  believed and then the true one again would count the battery's whole
+  lifetime once more in the energy statistics.
+
 ## [0.1.5] - 2026-11-26
 
 - **A second and third tower are found without knowing their Modbus

@@ -147,10 +147,13 @@ diagnostic sensor under Solarman's own name.
   now and then while it uploads to the cloud. Two missed polls in a row keep
   the last reading; the third makes the entities unavailable, and the next
   answer brings them back.
-- **Energy totals that do not jump.** The published register scans warn that
-  the BMS's total counters jump now and then. A total that climbs further
-  than a battery could charge between two polls keeps its last value, and a
-  lifetime total never falls.
+- **Energy totals that do not jump, and do not stick.** The published register
+  scans warn that the BMS's total counters jump now and then, and a logger
+  another client polls too sometimes hands over the other client's answer. A
+  reading that climbs further than a battery could charge since the last one,
+  or a day's total that falls, keeps the last value; it is believed only once
+  three readings in a row agree with it, such as the day's reset at midnight
+  or energy moved while Home Assistant was down. A lifetime total never falls.
 - **One request at a time, a fresh connection after any trouble.** The
   connection to the logger stays open between polls and is opened again after
   anything goes wrong, so a logger that rebooted is picked up at the next
